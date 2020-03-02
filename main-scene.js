@@ -32,6 +32,9 @@ class Ball {
 
         // saves how much the ball has rotated
         this.rotateMatrix = Mat4.identity();
+      
+        // saves whether this ball should be drawn and collided with
+        this.visible = true;
     }
 
     // --------------- IMPORTANT FUNCTIONS TO CALL
@@ -40,7 +43,8 @@ class Ball {
         return this.speed == 0;
     }
     draw(graphics_state) {
-        this.shape.draw(graphics_state, this.modelTransform(), this.material);
+        if (this.visible)
+            this.shape.draw(graphics_state, this.modelTransform(), this.material);
     }
     setPos(newPos) {
         this.pos = newPos;
@@ -98,6 +102,12 @@ class BallCollider {
         this.balls = ballArray;
         this.collisions = [];
         this.pathSegments = [];
+        
+        // save initial positions
+        this.initPositions = [];
+        for (var i = 0; i < this.balls.length; i++) {
+            this.initPositions.push(this.balls[i].pos);
+        }
     }
 
 	
@@ -123,6 +133,16 @@ class BallCollider {
                 return false;
         }
         return true;
+    }
+    
+    // return balls to initial positions, with zero velocity
+    resetPositions() {
+      for (var i = 0; i < this.balls.length; i++) {
+        this.balls[i].setPos(this.initPositions[i]);
+        this.balls[i].setVel(Vec.of(0,0,0));
+        this.balls[i].visible = true;
+      }
+    }
 
 	// ------------- INTERNAL HELPER FUNCTIONS
 
@@ -455,6 +475,7 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
                         ];
 
             // handler for ball position updates
+            // saves initial positions, allowing balls to easily be replaced
             this.ballCollider = new BallCollider(this.balls);
 
             // debug - hit cue ball
