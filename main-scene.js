@@ -19,6 +19,20 @@ const REWIND_MARGIN = -1e-6 // allows previous collision times to be detected an
 // table is at level z=0, so balls are translated by one BALL_RAD upwards
 
 
+//CAMERA GLOBALS - SAM
+var tracked_object_transform_matrix = Mat4.identity(); //Transform matrix of the object which the dynamic camera is following. The Cue is also aimed at this object
+var dynamic_camera_radius = 10; //How far from the object the dynamic camera floats
+var dynamic_camera_tilt = Math.PI / 10; //0 rad looks at horizon, PI/4 rad looks straight down
+var dynamic_camera_xz_angle = Math.PI; //0 rad looks down -z axis, PI/2 looks down -x axis, PI looks down +z axis, 3PI/2 looks down +x axis
+var static_camera_matrix = Mat4.inverse(Mat4.translation([0, 30, 0]).times(Mat4.rotation(Math.PI/2, Vec.of(-1, 0, 0)))); //Location of the static top down camera
+var selected_camera = 0; // 0=static, 1=dynamic_camera_angle
+var camera_sensitivity = 0.01 //dynamic camera will rotate at a rate of dx * camera_sensitivity radians where dx=pixels traversed by cursor
+
+//CUE & GAMESTATE GLOBALS - SAM
+var hitting = false; //currently in the hit animation or balls still moving?
+var hit_force = 0; //force when SPACE was pressed
+var hit_anim_start = 0; //time from this.t when SPACE was pressed to begin the current action phase
+
 // ball class
 class Ball {
     constructor(shape, material, initPosX, initPosY) {
@@ -421,16 +435,45 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
         {
             // The scene begins by requesting the camera, shapes, and materials it will need.
             super(context, control_box);
-            // First, include a secondary Scene that provides movement controls:
-            if (!context.globals.has_controls)
-                context.register_scene_component(new Movement_Controls(context, control_box.parentElement.insertCell()));
-
-            context.globals.graphics_state.camera_transform = Mat4.look_at(Vec.of(0, -100, 100), Vec.of(0, 0, 0), Vec.of(0, 1, 0));
-            this.initial_camera_location = Mat4.inverse(context.globals.graphics_state.camera_transform);
 
             const r = context.width / context.height;
             context.globals.graphics_state.projection_transform = Mat4.perspective(Math.PI / 4, r, .1, 1000);
-
+			
+			//MOUSE CONTROLS EVENTS - SAM
+			//
+			this.mouse_button_pressed = false;
+			this.mouse_init_position = Vec.of(0, 0, 0);
+			context.canvas.addEventListener("mousedown", e => {
+                e.preventDefault();
+				if(e.button == 0) {
+					this.mouse_button_pressed = true;
+					this.mouse_init_position = Vec.of(e.screenX, -e.screenY, 0);
+				}
+            });
+			context.canvas.addEventListener("mouseup", e => {
+                e.preventDefault();
+				if(e.button == 0) {
+					this.mouse_button_pressed = false;
+				}
+            });
+			context.canvas.addEventListener("mousemove", e => {
+                e.preventDefault();
+                if(this.mouse_button_pressed) {
+					//controls in dynamic camera mode
+					if(selected_camera) {
+						dynamic_camera_xz_angle = (dynamic_camera_xz_angle + e.movementX * camera_sensitivity) % (2*Math.PI);
+					}
+					//controls in static (top down) camera mode
+					else {
+						let cursorPos = Vec.of(e.screenX, -e.screenY, 0);
+						let temp = cursorPos.minus(this.mouse_init_position);
+						dynamic_camera_xz_angle = Math.atan2(temp[1], temp[0]) - Math.PI / 2;
+					}
+				}
+            });
+			//
+			//END MOUSE CONTROLS EVENTS
+			
             const shapes = {
                 torus: new Torus(15, 15),
                 torus2: new (Torus.prototype.make_flat_shaded_version())(15, 15),
@@ -482,19 +525,66 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
             this.balls[0].setVel(Vec.of(0, 5, 0));
         }
 
+		//CAMERA AND CUE CODE - SAM
+		//
+		//Attaches cue to the dynamically tracked object (cue ball) and places the camera. call this every frame at the very end
+		update_camera(graphics_state) {
+			if(selected_camera) {
+				let obj_coords = Vec.of(tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]);
+				let cam_y = Math.sin(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[1];
+				let cam_x = Math.sin(dynamic_camera_xz_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[0];
+				let cam_z = Math.cos(dynamic_camera_xz_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[2];
+				graphics_state.camera_transform = Mat4.look_at(Vec.of(cam_x, cam_y, cam_z), obj_coords, Vec.of(0, 1, 0));
+			}
+			else {
+				graphics_state.camera_transform = static_camera_matrix;
+			}
+			this.draw_cue(graphics_state);
+		}
+		
+		//returns a force for the pool cue between 0 and 1 inclusive
+		get_current_force_value() {
+			return 0.5 + Math.sin(1*Math.PI*this.t);
+		}
+		
+		//draws pool cue (called by update_camera)
+		draw_cue(graphics_state) {
+			let cue_transform = Mat4.identity();
+			//play the standard animation while player aims
+			if(!hitting) {
+				cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 2 * this.get_current_force_value() + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+			}
+			else {
+				//striking animation
+				if(this.t - hit_anim_start < 0.1) {
+					cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, (0.1 - this.t + hit_anim_start) / 0.1 * 2 * hit_force + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+				}
+				//hold cue in place after strike(can also warp it below the table)
+				else {
+					cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+				}
+				//condition to end action phase and begin aiming again
+				if(this.t - hit_anim_start > 1.5) {
+					hitting = false;
+				}
+			}
+			this.shapes.box.draw(graphics_state, cue_transform, this.plastic.override({color: this.cube_colors[4]}));
+		}
+
         make_control_panel() {
-            // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-            this.key_triggered_button("View solar system", ["0"], () => this.attached = () => this.initial_camera_location);
-            this.new_line();
-            this.key_triggered_button("Attach to planet 1", ["1"], () => this.attached = () => this.planet_1);
-            this.key_triggered_button("Attach to planet 2", ["2"], () => this.attached = () => this.planet_2);
-            this.new_line();
-            this.key_triggered_button("Attach to planet 3", ["3"], () => this.attached = () => this.planet_3);
-            this.key_triggered_button("Attach to planet 4", ["4"], () => this.attached = () => this.planet_4);
-            this.new_line();
-            this.key_triggered_button("Attach to planet 5", ["5"], () => this.attached = () => this.planet_5);
-            this.key_triggered_button("Attach to moon", ["m"], () => this.attached = () => this.moon);
+			this.key_triggered_button("Change Camera", ["c"], () => {
+				selected_camera = 1 - selected_camera;
+			});
+			this.key_triggered_button("Hit Ball", [" "], () => {
+				if(!hitting) {
+					hitting = true;
+					hit_anim_start = this.t;
+					hit_force = this.get_current_force_value();
+				}
+			});
         }
+		//
+		//END CAMERA AND CUE CODE
 
         display(graphics_state) {
             graphics_state.lights = this.lights;        // Use the lights stored in this.lights.
