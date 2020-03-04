@@ -427,7 +427,12 @@ class PathSegment {
     }
 }
 
-
+//The maximum is exclusive and the minimum is inclusive
+function getRandomInt(min, max) {
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(Math.random() * (max - min)) + min;
+}
 
 window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
     class Assignment_Three_Scene extends Scene_Component {
@@ -487,34 +492,86 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
             // Make some Material objects available to you:
             this.materials =
                 {
-                    test: context.get_instance(Phong_Shader).material(Color.of(1, 1, 0, 1), {ambient: .2}),
-                    ring: context.get_instance(Ring_Shader).material()
-
-                    // TODO:  Fill in as many additional material objects as needed in this key/value table.
-                    //        (Requirement 1)
+                	balls: [
+                	    // Cue ball at position 0 and X ball at position X
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/cueball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/1ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/2ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/3ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/4ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/5ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/6ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/7ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/8ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/9ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/10ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/11ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/12ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/13ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/14ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/15ball.jpg", true)})
+                	]
                 };
 
             this.lights = [new Light(Vec.of(0, 0, 20, 1), Color.of(0, 1, 1, 1), 1000)];
 
+            // Determine setup of the balls
+            // 8 ball is placed in center of rack (middle of third row)
+            // One corner ball must be striped and the other solid
+            // The rest of the balls are placed randomly
+
+            let nums = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15],
+              leftCorner = 0,
+              rightCorner = 0;
+
+            let tmp = getRandomInt(0,2);
+            console.log(tmp);
+            if (getRandomInt(0,2) == 1) {
+
+              leftCorner = getRandomInt(1,8);
+              rightCorner = getRandomInt(9,16);
+
+              // Remove the corner balls from nums
+              nums.splice((leftCorner-1), 1);
+              nums.splice((rightCorner-2), 1);
+            }
+            else {
+              leftCorner = getRandomInt(9,16);
+              rightCorner = getRandomInt(1,8);
+
+              // Remove the corner balls from nums
+              nums.splice((leftCorner-2), 1);
+              nums.splice((rightCorner-1), 1);
+            }
+
+            let randNums = [],
+              i = nums.length,
+              j = 0;
+
+            while (i--) {
+            	j = Math.floor(Math.random() * (i+1));
+            	randNums.push(nums[j]);
+            	nums.splice(j,1);
+            }
 
             // list of balls
             this.balls = [
-                            new Ball(this.shapes.ball, this.materials.test, 0, -30),
-                            new Ball(this.shapes.ball, this.materials.test, 0, 0),
-                            new Ball(this.shapes.ball, this.materials.test, 1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, -1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 0, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test,  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 0, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.test, 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD)
+                            new Ball(this.shapes.ball, this.materials.balls[0], 0, -30),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[0]], 0, 0),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[1]], 1.2 * BALL_RAD, 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[2]], -1.2 * BALL_RAD, 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[8], 0, 2 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[3]],  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[4]], 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[5]], -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[6]], 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[7]], -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[8]], 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[9]], 0, 4 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[10]], -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[randNums[11]], 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[leftCorner], -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(this.shapes.ball, this.materials.balls[rightCorner], 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD)
                         ];
 
             // handler for ball position updates
@@ -539,7 +596,7 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
 			else {
 				graphics_state.camera_transform = static_camera_matrix;
 			}
-			this.draw_cue(graphics_state);
+			//this.draw_cue(graphics_state);
 		}
 		
 		//returns a force for the pool cue between 0 and 1 inclusive
@@ -601,6 +658,9 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
             for (var i = 0; i < this.balls.length; i++) {
                 this.balls[i].draw(graphics_state);
             }
+
+            static_camera_matrix = Mat4.look_at( Vec.of( 0,0,200 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) );
+            this.update_camera(graphics_state);           
         }
     };
 
