@@ -1,0 +1,151 @@
+
+* {
+    font-family: "Georgia", 'Lato', sans-serif;
+}
+
+.screen-container {
+    width: 1080px;
+    height: 640px;
+    margin: 20px 20px;
+    position: relative;
+    background-color: #00b300;
+}
+
+.start-menu {
+    width: 500px;
+    height: 200px;
+    margin: 10% 21% 0;
+    text-align: center;
+    background-color: #00b300;
+    position: absolute;
+}
+
+.logo {
+    height: 350px;
+    width: auto;
+}
+
+.play-btn {
+    color: white;
+    background-color: #1E90FF;
+    border: 2px solid #1E90FF;
+    font-size: 20px;
+    width: 300px;
+    margin-top: 10px;
+    margin-left: 160px;
+    padding: 10px 20px;
+    border-radius: 14px;
+    transition-duration: 0.4s;
+    text-align: center;
+}
+
+.play-btn:hover {
+    background-color: #0073e6;
+    border: 2px solid #0073e6;
+}
+
+#game-canvas {
+    position: absolute;
+}
+
+.playerHUD {
+    position: absolute;
+    z-index: 1;
+}
+
+.player {
+  border-radius: 5px;
+  border: 1px solid black;
+  display: block;
+  position: absolute;
+  width: 200px;
+  height: 50px;
+  top: 15px;
+  text-align: center;
+}
+
+.player ul {
+  display: inline-block;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.player ul li {
+  float: left;
+  padding: 0;
+  margin: 0 3px;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  display: block;
+  border-radius: 20px;
+}
+
+.player1 {
+  background-color: #66ccff;
+  border-color: #737373;
+  left: 15px;
+}
+
+.player2 {
+  background-color: #ff4d4d;
+  border-color: #737373;
+  left: 865px;
+}
+
+.player h6 {
+  margin: 0;
+  padding: 0;
+  margin-top: 2px;
+  margin-left: 3px;
+  margin-bottom: 4px;
+  color: white;
+  font-size: 15px;
+  text-shadow: -1px -1px 0 #3d3d3d,
+                1px -1px 0 #3d3d3d,
+               -1px  1px 0 #3d3d3d,
+                1px  1px 0 #3d3d3d;
+}
+
+.player.active {
+  background-color: #84e184;
+  border-color: #84e184
+}
+
+.player ul li.pocketed {
+  opacity: 0.1
+}
+
+.player.solid span:before {
+  content: ' - Solid';
+  font-size: 13px;
+}
+
+.player.striped span:before {
+  content: '- Striped';
+  font-size: 13px;
+}
+
+.player ul li::after {
+  display: block;
+  background-color: white;
+  width: 12px;
+  height: 12px;
+  border-radius: 12px;
+  margin-top: -15px;
+  content: '';
+  margin-left: 4px;
+  z-index: 10;
+}
+
+.player ul li {
+  font-size: 10px;
+  line-height: 19px;
+  text-align: center;
+}
+
+.player.unknown ul li {
+  background-color: #3d3d3d;
+}
