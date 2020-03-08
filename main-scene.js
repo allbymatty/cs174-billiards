@@ -434,8 +434,8 @@ function getRandomInt(min, max) {
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
-window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
-    class Assignment_Three_Scene extends Scene_Component {
+window.Billiards_Game = window.classes.Billiards_Game =
+    class Billiards_Game extends Scene_Component {
         constructor(context, control_box)
         {
             // The scene begins by requesting the camera, shapes, and materials it will need.
@@ -476,6 +476,7 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
 					}
 				}
             });
+
 			//
 			//END MOUSE CONTROLS EVENTS
 			
@@ -524,8 +525,6 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
               leftCorner = 0,
               rightCorner = 0;
 
-            let tmp = getRandomInt(0,2);
-            console.log(tmp);
             if (getRandomInt(0,2) == 1) {
 
               leftCorner = getRandomInt(1,8);
@@ -579,7 +578,7 @@ window.Assignment_Three_Scene = window.classes.Assignment_Three_Scene =
             this.ballCollider = new BallCollider(this.balls);
 
             // debug - hit cue ball
-            this.balls[0].setVel(Vec.of(0, 5, 0));
+            //this.balls[0].setVel(Vec.of(0, 5, 0));
         }
 
 		//CAMERA AND CUE CODE - SAM

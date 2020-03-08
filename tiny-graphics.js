@@ -592,12 +592,12 @@ class Scene_Component       // The Scene_Component superclass is the base class 
 
 window.Canvas_Widget = window.tiny_graphics.Canvas_Widget =
 class Canvas_Widget                    // Canvas_Widget embeds a WebGL demo onto a website, along with various panels of controls.
-{ constructor( element, scenes, show_controls = true )   // One panel exists per each scene that's used in the canvas.  You can use up
-    { this.create( element, scenes, show_controls ) }    // to 16 Canvas_Widgets; browsers support up to 16 WebGL contexts per page.    
-  create( element, scenes, show_controls )
+{ constructor( element, scenes, dimensions, show_controls = true )   // One panel exists per each scene that's used in the canvas.  You can use up
+    { this.create( element, scenes, dimensions, show_controls ) }    // to 16 Canvas_Widgets; browsers support up to 16 WebGL contexts per page.    
+  create( element, scenes, dimensions, show_controls )
     { this.patch_ios_bug();
       element = document.querySelector( "#" + element );
-      try  { this.populate_canvas( element, scenes, show_controls );
+      try  { this.populate_canvas( element, scenes, dimensions, show_controls );
            } catch( error )
            { element.innerHTML = "<H1>Error loading the demo.</H1>" + error }
     }
@@ -608,7 +608,7 @@ class Canvas_Widget                    // Canvas_Widget embeds a WebGL demo onto
         Vec.from = function( arr ) { return new Vec( Array.from( arr       ) ) }
       }
     }
-  populate_canvas( element, scenes, show_controls )   // Assign a Canvas_Manager to the WebGL canvas.
+  populate_canvas( element, scenes, dimensions, show_controls )   // Assign a Canvas_Manager to the WebGL canvas.
     { if( !scenes.every( x => window[ x ] ) )         // Make sure each scene class really exists.
         throw "(Featured class not found)";
       const canvas = element.appendChild( document.createElement( "canvas" ) );
@@ -616,7 +616,7 @@ class Canvas_Widget                    // Canvas_Widget embeds a WebGL demo onto
       control_panels.className = "control-box";
       if( !show_controls ) control_panels.style.display = "none";
       const row = control_panels.insertRow( 0 );
-      this.canvas_manager = new Canvas_Manager( canvas, Color.of( 0,0,0,1 ) );  // Second parameter sets background color.
+      this.canvas_manager = new Canvas_Manager( canvas, Color.of( 0,0,0,1 ), dimensions );  // Second parameter sets background color.
 
       for( let scene_class_name of scenes )                  // Register the initially requested scenes to the render loop.
         this.canvas_manager.register_scene_component( new window[ scene_class_name ]( this.canvas_manager, row.insertCell() ) );   
