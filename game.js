@@ -2,7 +2,8 @@ const PLAYER1 = 0;
 const PLAYER2 = 1;
 
 class Game {
-    constructor() {
+    constructor(gui) {
+        this.gui = gui;
 
         // The numbered balls remaining on the table
         this.remaining_balls = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
@@ -27,15 +28,48 @@ class Game {
         }
     }
 
-    pocketedBall(ballNum) {
-        if (ballNum == 0) {
+    // takes list of pocket balls, in order of sinking
+    // returns true if game over
+    pocketedBalls(ballNums) {
+        //check if they scratched and also got 8-ball in, losing game
+        if (ballNums.includes(0) && ballNums.includes(8)) {
+            winner = this.turnName == 'player1' ? 'player2' : 'player1';
+            this.gui.endGame(winner);
+            return true;
+        }
+        else if (ballNums.includes(0)) {
+            // remove any other pocketed balls from remaining_balls
+            for (let i = 0; i < ballNums.length; i++) {
+                if (ballNums[i] != 0) {
+                    for (let j = 0; j < this.remaining_balls.length; j++) {
+                        if (ballNums[i] == this.remaining_balls[j]) {
+                            this.remaining_balls.splice(j, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+
             // Scratch
             alert("SCRATCH!");
             this.turnName = (this.turnName == 'player1' ? 'player2' : 'player1');
             this.turnNum = (this.turnNum == PLAYER1 ? PLAYER2 : PLAYER1);
-            gui.updateTurn(this.turnName);
+            this.gui.updateTurn(this.turnName);
+            this.gui.updateHUD(this.remaining_balls, this.teams);
         }
-        else if (ballNum == 8) {
+        else if (ballNums.includes(8)) {
+            // remove any other pocketed balls from remaining_balls
+            // remove ONLY those that were sunk before 8 ball
+            let i = 0;
+            for (; i < ballNums.length && ballNums[i] != 8; i++) {
+                for (let j = 0; j < this.remaining_balls.length; j++) {
+                    if (ballNums[i] == this.remaining_balls[j]) {
+                        this.remaining_balls.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+            this.gui.updateHUD(this.remaining_balls, this.teams);
 
             // Assume winning
             let valid = true;
@@ -61,26 +95,38 @@ class Game {
             else
                 winner = this.turnName == 'player1' ? 'player1' : 'player2', 
 
-            gui.endGame(winner);
+            this.gui.endGame(winner);
+            return true;
 
         }
         else {
-            // Find the type of the pocketed ball
-            var ballType;
-            if (ballNum < 8) 
-                ballType = 'solid';
-            else 
-                ballType = 'striped';
-                
-            // Set teams if have not already
-            if (this.teams[PLAYER1] == '')
-                this.setTeams(this.turnName, ballType);
+            // remove balls from remaining_balls
+            let ballType = 'none';
+            for (let i = 0; i < ballNums.length; i++) {
+                // Find the type of the pocketed ball
+                if (ballType == 'none') {
+                    if (ballNums[i] < 8)
+                        ballType = 'solid';
+                    else
+                        ballType = 'striped';
+                }
+                else {
+                    if (ballType == 'solid' && ballNums[i] > 8)
+                        ballType = 'mixed';
+                    else if (ballType == 'striped' && ballNums[i] < 8)
+                        ballType = 'mixed';
+                }
 
-            // Remove ball from remaining
-            for (var k = 0; k < this.remaining_balls.length; k++) {
-                if (ballNum == this.remaining_balls[k]) {
-                    this.remaining_balls.splice(k, 1);
-                    break;
+                // Set teams if have not already
+                if (this.teams[PLAYER1] == '')
+                    this.setTeams(this.turnName, ballType);
+
+                // Remove ball from remaining
+                for (var k = 0; k < this.remaining_balls.length; k++) {
+                    if (ballNums[i] == this.remaining_balls[k]) {
+                        this.remaining_balls.splice(k, 1);
+                        break;
+                    }
                 }
             }
 
@@ -96,10 +142,12 @@ class Game {
                 console.log(this.turnName);
                 console.log(this.turnNum);
             }
-            gui.updateTurn(this.turnName);
+            this.gui.updateTurn(this.turnName);
 
             // Make corresponding updates to HUD
-            gui.updateHUD(this.remaining_balls, this.teams);
+            this.gui.updateHUD(this.remaining_balls, this.teams);
         }
+        // game not over, so return false
+        return false;
     }
 }

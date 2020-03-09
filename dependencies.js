@@ -34,65 +34,18 @@ window.Square = window.classes.Square =
     }
 
 
-window.Tetrahedron = window.classes.Tetrahedron =
-    class Tetrahedron extends Shape                       // The Tetrahedron shape demonstrates flat vs smooth shading (a boolean argument
-    {
-        constructor(using_flat_shading)                   // selects which one).  It is also our first 3D, non-planar shape.
-        {
-            super("positions", "normals", "texture_coords");
-            var a = 1 / Math.sqrt(3);
-            if (!using_flat_shading)                                 // Method 1:  A tetrahedron with shared vertices.  Compact, performs better,
-            {                                                         // but can't produce flat shading or discontinuous seams in textures.
-                this.positions.push(...Vec.cast([0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]));
-                this.normals.push(...Vec.cast([-a, -a, -a], [1, 0, 0], [0, 1, 0], [0, 0, 1]));
-                this.texture_coords.push(...Vec.cast([0, 0], [1, 0], [0, 1,], [1, 1]));
-                this.indices.push(0, 1, 2, 0, 1, 3, 0, 2, 3, 1, 2, 3);  // Vertices are shared multiple times with this method.
-            } else {
-                this.positions.push(...Vec.cast([0, 0, 0], [1, 0, 0], [0, 1, 0],         // Method 2:  A tetrahedron with
-                    [0, 0, 0], [1, 0, 0], [0, 0, 1],         // four independent triangles.
-                    [0, 0, 0], [0, 1, 0], [0, 0, 1],
-                    [0, 0, 1], [1, 0, 0], [0, 1, 0]));
-
-                this.normals.push(...Vec.cast([0, 0, -1], [0, 0, -1], [0, 0, -1],        // This here makes Method 2 flat shaded, since values
-                    [0, -1, 0], [0, -1, 0], [0, -1, 0],        // of normal vectors can be constant per whole
-                    [-1, 0, 0], [-1, 0, 0], [-1, 0, 0],        // triangle.  Repeat them for all three vertices.
-                    [a, a, a], [a, a, a], [a, a, a]));
-
-                this.texture_coords.push(...Vec.cast([0, 0], [1, 0], [1, 1],      // Each face in Method 2 also gets its own set of texture coords
-                    [0, 0], [1, 0], [1, 1],      //(half the image is mapped onto each face).  We couldn't do this
-                    [0, 0], [1, 0], [1, 1],      // with shared vertices since this features abrupt transitions
-                    [0, 0], [1, 0], [1, 1]));  // when approaching the same point from different directions.
-
-                this.indices.push(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);      // Notice all vertices are unique this time.
+window.Cube = window.classes.Cube =
+    class Cube extends Shape    // A cube inserts six square strips into its arrays.
+    { constructor()
+    { super( "positions", "normals", "texture_coords" );
+        for( var i = 0; i < 3; i++ )
+            for( var j = 0; j < 2; j++ )
+            { var square_transform = Mat4.rotation( i == 0 ? Math.PI/2 : 0, Vec.of(1, 0, 0) )
+                .times( Mat4.rotation( Math.PI * j - ( i == 1 ? Math.PI/2 : 0 ), Vec.of( 0, 1, 0 ) ) )
+                .times( Mat4.translation([ 0, 0, 1 ]) );
+                Square.insert_transformed_copy_into( this, [], square_transform );
             }
-        }
     }
-
-
-window.Windmill = window.classes.Windmill =
-    class Windmill extends Shape                     // Windmill Shape.  As our shapes get more complicated, we begin using matrices and flow
-    {
-        constructor(num_blades)                      // control (including loops) to generate non-trivial point clouds and connect them.
-        {
-            super("positions", "normals", "texture_coords");
-            for (var i = 0; i < num_blades; i++)     // A loop to automatically generate the triangles.
-            {                                                                                   // Rotate around a few degrees in the
-                var spin = Mat4.rotation(i * 2 * Math.PI / num_blades, Vec.of(0, 1, 0));            // XZ plane to place each new point.
-                var newPoint = spin.times(Vec.of(1, 0, 0, 1)).to3();   // Apply that XZ rotation matrix to point (1,0,0) of the base triangle.
-                this.positions.push(newPoint,                           // Store this XZ position.                  This is point 1.
-                    newPoint.plus([0, 1, 0]),         // Store it again but with higher y coord:  This is point 2.
-                    Vec.of(0, 0, 0));      // All triangles touch this location.       This is point 3.
-
-                // Rotate our base triangle's normal (0,0,1) to get the new one.  Careful!  Normal vectors are not points;
-                // their perpendicularity constraint gives them a mathematical quirk that when applying matrices you have
-                // to apply the transposed inverse of that matrix instead.  But right now we've got a pure rotation matrix,
-                // where the inverse and transpose operations cancel out.
-                var newNormal = spin.times(Vec.of(0, 0, 1).to4(0)).to3();
-                this.normals.push(newNormal, newNormal, newNormal);
-                this.texture_coords.push(...Vec.cast([0, 0], [0, 1], [1, 0]));
-                this.indices.push(3 * i, 3 * i + 1, 3 * i + 2); // Procedurally connect the 3 new vertices into triangles.
-            }
-        }
     }
 
 

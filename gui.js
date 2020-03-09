@@ -7,7 +7,7 @@ class GUI {
       document.getElementById('menu').style.display="none";
       document.getElementById('game-canvas').style.display="block";
       document.getElementById('HUD').style.display="block";
-      var game = new Game();
+      this.game = new Game(this);
       
       // Testing
       /*game.pocketedBall(13);

@@ -3,6 +3,17 @@ const BALL_RAD = 3;
 const TABLE_WIDTH = BALL_RAD * 6 * 3;
 const TABLE_HEIGHT = BALL_RAD * 6 * 7;
 
+// pocket constants
+const POCKET_POSITIONS = [
+    Vec.of(TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 0),
+    Vec.of(-TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 0),
+    Vec.of(TABLE_WIDTH / 2, -TABLE_HEIGHT / 2, 0),
+    Vec.of(-TABLE_WIDTH / 2, -TABLE_HEIGHT / 2, 0),
+    Vec.of(TABLE_WIDTH / 2, 0, 0),
+    Vec.of(-TABLE_WIDTH / 2, 0, 0)
+]
+const POCKET_RAD = 2 * BALL_RAD; // balls count as sunk if they get within this distance of a pocket position
+
 // const FRICTION_ACC = 0.01; // units per tick^2 - looks unnatural
 const FRICTION_SPEED_FRACTION = 0.99; // each tick, the speed of each ball is multiplied by this coefficient
 const FRICTION_MIN_SPEED = 0.01; // at this speed, friction will immediately stop the ball
@@ -14,6 +25,8 @@ const COLLISION_FRACTION = 0.99; // the amount of relative velocity components t
 const REWIND_MARGIN = -1e-6 // allows previous collision times to be detected and time rewound up to this amount
 // due to floating point error for collisions that happen almost simultaneously
 
+const MAX_HITTING_SPEED = 5; // max speed achievable when hitting the cue ball
+
 // assumptions
 // table centered around 0,0
 // table is at level z=0, so balls are translated by one BALL_RAD upwards
@@ -21,10 +34,10 @@ const REWIND_MARGIN = -1e-6 // allows previous collision times to be detected an
 
 //CAMERA GLOBALS - SAM
 var tracked_object_transform_matrix = Mat4.identity(); //Transform matrix of the object which the dynamic camera is following. The Cue is also aimed at this object
-var dynamic_camera_radius = 10; //How far from the object the dynamic camera floats
+var dynamic_camera_radius = 15 * BALL_RAD; //How far from the object the dynamic camera floats
 var dynamic_camera_tilt = Math.PI / 10; //0 rad looks at horizon, PI/4 rad looks straight down
-var dynamic_camera_xz_angle = Math.PI; //0 rad looks down -z axis, PI/2 looks down -x axis, PI looks down +z axis, 3PI/2 looks down +x axis
-var static_camera_matrix = Mat4.inverse(Mat4.translation([0, 30, 0]).times(Mat4.rotation(Math.PI/2, Vec.of(-1, 0, 0)))); //Location of the static top down camera
+var dynamic_camera_xy_angle = Math.PI / 2; //0 rad looks down +x axis, PI/2 looks down +y axis, PI looks down -x axis, 3PI/2 looks down -y axis
+var static_camera_matrix = Mat4.look_at(Vec.of(0, -100, 150), Vec.of(0,0,0), Vec.of(0,0,1)); //Mat4.inverse(Mat4.translation([0, 30, 0]).times(Mat4.rotation(Math.PI/2, Vec.of(-1, 0, 0)))); //Location of the static top down camera
 var selected_camera = 0; // 0=static, 1=dynamic_camera_angle
 var camera_sensitivity = 0.01 //dynamic camera will rotate at a rate of dx * camera_sensitivity radians where dx=pixels traversed by cursor
 
@@ -33,9 +46,24 @@ var hitting = false; //currently in the hit animation or balls still moving?
 var hit_force = 0; //force when SPACE was pressed
 var hit_anim_start = 0; //time from this.t when SPACE was pressed to begin the current action phase
 
+// more gamestate globals
+var cue_hit = false; // true if cue ball has been hit, ensuring cue ball gets hit only once per turn, set by draw_cue
+var endTurn = false; // flags count of pocketed balls and game functions in the display loop, set by draw_cue
+
+
+// gui variable
+var gui;
+function onLoad() {
+    gui = new GUI();
+    gui.setupGame();
+}
+
 // ball class
 class Ball {
-    constructor(shape, material, initPosX, initPosY) {
+    // number = 0-15 (0=cue ball)
+    constructor(number, shape, material, initPosX, initPosY) {
+        this.number = number;
+
         this.pos = Vec.of(initPosX, initPosY, 0);
 
         this.velDir = Vec.of(0,0,0);
@@ -172,13 +200,6 @@ class BallCollider {
         this.collectCollisions();
 
         while (this.collisions.length > 0 && this.loopCounter < 50) {
-			// debug
-			/*
-			for (var i = 0; i < this.collisions.length; i++) {
-				console.log(this.collisions[i].time + ", " + this.collisions[i].type + ", ", this.collisions[i].ballIndex + ", " + this.collisions[i].ballIndex2 + "\n");
-			}
-			console.log("\n");
-			*/
 
             this.computeCollision();
             this.collectCollisions();
@@ -268,7 +289,8 @@ class BallCollider {
         for (var i = 0; i < this.pathSegments.length; i++) {
             var segment = this.pathSegments[i];
 
-            if (!segment.collisionsRegistered) {
+            // dont compute collisions if collisions already computed or if ball invisible
+            if (!this.balls[i].visible || !segment.collisionsRegistered) {
 
                 // wall collisions x
                 var t = segment.timeOfWallCollisionX();
@@ -285,8 +307,9 @@ class BallCollider {
                 // ball collisions
                 for (var j = 0; j < this.pathSegments.length; j++) {
                     // only check collisions with pathsegments with collisionsRegistered = true - avoids double counting - this pathsegment (i) will become collisionsRegistered = true at the end of this loop
+                    // also dont check collisions with invisible balls
                     var otherSegment = this.pathSegments[j];
-                    if (i != j && otherSegment.collisionsRegistered) {
+                    if (i != j && this.balls[j].visible && otherSegment.collisionsRegistered) {
                         t = segment.timeOfCollisionWith(otherSegment);
                         if (t >= REWIND_MARGIN) {
                             this.addCollision(new Collision(t, 0, i, j));
@@ -466,13 +489,13 @@ window.Billiards_Game = window.classes.Billiards_Game =
                 if(this.mouse_button_pressed) {
 					//controls in dynamic camera mode
 					if(selected_camera) {
-						dynamic_camera_xz_angle = (dynamic_camera_xz_angle + e.movementX * camera_sensitivity) % (2*Math.PI);
+						dynamic_camera_xy_angle = (dynamic_camera_xy_angle - e.movementX * camera_sensitivity) % (2*Math.PI);
 					}
 					//controls in static (top down) camera mode
 					else {
 						let cursorPos = Vec.of(e.screenX, -e.screenY, 0);
 						let temp = cursorPos.minus(this.mouse_init_position);
-						dynamic_camera_xz_angle = Math.atan2(temp[1], temp[0]) - Math.PI / 2;
+						dynamic_camera_xy_angle = Math.atan2(temp[1], temp[0]) - Math.PI / 2;
 					}
 				}
             });
@@ -481,12 +504,8 @@ window.Billiards_Game = window.classes.Billiards_Game =
 			//END MOUSE CONTROLS EVENTS
 			
             const shapes = {
-                torus: new Torus(15, 15),
-                torus2: new (Torus.prototype.make_flat_shaded_version())(15, 15),
-                ball: new Subdivision_Sphere(5)
-
-                // TODO:  Fill in as many additional shape instances as needed in this key/value table.
-                //        (Requirement 1)
+                ball: new Subdivision_Sphere(5),
+                cube: new Cube()
             };
             this.submit_shapes(context, shapes);
 
@@ -511,7 +530,8 @@ window.Billiards_Game = window.classes.Billiards_Game =
 						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/13ball.jpg", true)}),
 						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/14ball.jpg", true)}),
 						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/15ball.jpg", true)})
-                	]
+                	],
+                    default: context.get_instance(Phong_Shader).material(Color.of(1,1,1,1), {ambient: 1})
                 };
 
             this.lights = [new Light(Vec.of(0, 0, 20, 1), Color.of(0, 1, 1, 1), 1000)];
@@ -555,30 +575,33 @@ window.Billiards_Game = window.classes.Billiards_Game =
 
             // list of balls
             this.balls = [
-                            new Ball(this.shapes.ball, this.materials.balls[0], 0, -30),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[0]], 0, 0),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[1]], 1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[2]], -1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[8], 0, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[3]],  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[4]], 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[5]], -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[6]], 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[7]], -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[8]], 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[9]], 0, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[10]], -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[randNums[11]], 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[leftCorner], -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(this.shapes.ball, this.materials.balls[rightCorner], 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD)
+                            new Ball(0, this.shapes.ball, this.materials.balls[0], 0, -30),
+                            new Ball(randNums[0], this.shapes.ball, this.materials.balls[randNums[0]], 0, 0),
+                            new Ball(randNums[1], this.shapes.ball, this.materials.balls[randNums[1]], 1.2 * BALL_RAD, 1.8 * BALL_RAD),
+                            new Ball(randNums[2], this.shapes.ball, this.materials.balls[randNums[2]], -1.2 * BALL_RAD, 1.8 * BALL_RAD),
+                            new Ball(8, this.shapes.ball, this.materials.balls[8], 0, 2 * 1.8 * BALL_RAD),
+                            new Ball(randNums[3], this.shapes.ball, this.materials.balls[randNums[3]],  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
+                            new Ball(randNums[4], this.shapes.ball, this.materials.balls[randNums[4]], 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
+                            new Ball(randNums[5], this.shapes.ball, this.materials.balls[randNums[5]], -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(randNums[6], this.shapes.ball, this.materials.balls[randNums[6]], 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(randNums[7], this.shapes.ball, this.materials.balls[randNums[7]], -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(randNums[8], this.shapes.ball, this.materials.balls[randNums[8]], 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
+                            new Ball(randNums[9], this.shapes.ball, this.materials.balls[randNums[9]], 0, 4 * 1.8 * BALL_RAD),
+                            new Ball(randNums[10], this.shapes.ball, this.materials.balls[randNums[10]], -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(randNums[11], this.shapes.ball, this.materials.balls[randNums[11]], 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(leftCorner, this.shapes.ball, this.materials.balls[leftCorner], -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
+                            new Ball(rightCorner, this.shapes.ball, this.materials.balls[rightCorner], 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD)
                         ];
 
             // handler for ball position updates
             // saves initial positions, allowing balls to easily be replaced
             this.ballCollider = new BallCollider(this.balls);
 
-            // debug - hit cue ball
-            //this.balls[0].setVel(Vec.of(0, 5, 0));
+            // stores ball numbers that have been sunk (in order) in any one turn
+            this.sunkBallNums = [];
+
+            // time variable
+            this.t = 0;
         }
 
 		//CAMERA AND CUE CODE - SAM
@@ -586,53 +609,75 @@ window.Billiards_Game = window.classes.Billiards_Game =
 		//Attaches cue to the dynamically tracked object (cue ball) and places the camera. call this every frame at the very end
 		update_camera(graphics_state) {
 			if(selected_camera) {
-				let obj_coords = Vec.of(tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]);
-				let cam_y = Math.sin(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[1];
-				let cam_x = Math.sin(dynamic_camera_xz_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[0];
-				let cam_z = Math.cos(dynamic_camera_xz_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[2];
-				graphics_state.camera_transform = Mat4.look_at(Vec.of(cam_x, cam_y, cam_z), obj_coords, Vec.of(0, 1, 0));
+				let obj_coords = this.balls[0].pos.plus(Vec.of(0,0,BALL_RAD));
+				let cam_z = Math.sin(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[2];
+				let cam_y = -Math.sin(dynamic_camera_xy_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[1];
+				let cam_x = -Math.cos(dynamic_camera_xy_angle) * Math.cos(dynamic_camera_tilt) * dynamic_camera_radius + obj_coords[0];
+				graphics_state.camera_transform = Mat4.look_at(Vec.of(cam_x, cam_y, cam_z), obj_coords, Vec.of(0, 0, 1));
 			}
 			else {
 				graphics_state.camera_transform = static_camera_matrix;
 			}
-			//this.draw_cue(graphics_state);
+			this.draw_cue(graphics_state);
 		}
 		
 		//returns a force for the pool cue between 0 and 1 inclusive
 		get_current_force_value() {
-			return 0.5 + Math.sin(1*Math.PI*this.t);
+			return 0.5 + 0.5 * Math.sin(Math.PI*this.t);
 		}
-		
+
+		/**
 		//draws pool cue (called by update_camera)
 		draw_cue(graphics_state) {
-			let cue_transform = Mat4.identity();
-			//play the standard animation while player aims
-			if(!hitting) {
-				cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 2 * this.get_current_force_value() + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
-			}
-			else {
-				//striking animation
-				if(this.t - hit_anim_start < 0.1) {
-					cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, (0.1 - this.t + hit_anim_start) / 0.1 * 2 * hit_force + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
-				}
-				//hold cue in place after strike(can also warp it below the table)
-				else {
-					cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xz_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
-				}
-				//condition to end action phase and begin aiming again
-				if(this.t - hit_anim_start > 1.5) {
-					hitting = false;
-				}
-			}
-			this.shapes.box.draw(graphics_state, cue_transform, this.plastic.override({color: this.cube_colors[4]}));
-		}
+            let cue_transform = Mat4.identity();
+            //play the standard animation while player aims
+            if (!hitting) {
+                cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 2 * this.get_current_force_value() + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+            } else {
+                //striking animation
+                if (this.t - hit_anim_start < 0.1) {
+                    cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, (0.1 - this.t + hit_anim_start) / 0.1 * 2 * hit_force + 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+                }
+                //hold cue in place after strike(can also warp it below the table)
+                else {
+                    cue_transform = Mat4.translation([tracked_object_transform_matrix[0][3], tracked_object_transform_matrix[1][3], tracked_object_transform_matrix[2][3]]).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0, 1, 0))).times(Mat4.translation([0, 0, 1.5])).times(Mat4.scale([.25, .25, 5])).times(Mat4.translation([0, 0, 1]));
+                }
+                if (this.t - hit_anim_start > 1.5) {
+                    if ()
+                    hitting = false;
+                }
+            }
+            // this.shapes.box.draw(graphics_state, cue_transform, this.plastic.override({color: this.cube_colors[4]}));
+        }
+         **/
+		// redo of drawing pool cue, doesn't draw pool cue after instant of hitting cue ball
+        // needed to change structure fairly drastically to integrate with adding velocity to cue ball only once
+        // draws cue and handles waiting for balls to stop moving
+		draw_cue(graphics_state) {
+		    let cue_transform = Mat4.identity();
+		    if (!hitting) {
+                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0,0,1))).times(Mat4.translation([-(2 * BALL_RAD * this.get_current_force_value() + BALL_RAD), 0, BALL_RAD])).times(Mat4.scale([10 * BALL_RAD, .25, .25])).times(Mat4.translation([-1, 0, 0]));
+                this.shapes.cube.draw(graphics_state, cue_transform, this.materials.default);
+		    }
+		    else if (this.t - hit_anim_start < 0.1) {
+                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0,0,1))).times(Mat4.translation([-((0.1 - this.t + hit_anim_start) / 0.1 * 2 * BALL_RAD * hit_force + BALL_RAD), 0, BALL_RAD])).times(Mat4.scale([10 * BALL_RAD, .25, .25])).times(Mat4.translation([-1, 0, 0]));
+                this.shapes.cube.draw(graphics_state, cue_transform, this.materials.default);
+		    }
+		    else if (!cue_hit) {
+		        this.hit_cue_ball();
+		        cue_hit = true;
+            }
+		    else if (!endTurn && this.ballCollider.allBallsStopped()) {
+		        endTurn = true;
+            }
+        }
 
         make_control_panel() {
 			this.key_triggered_button("Change Camera", ["c"], () => {
 				selected_camera = 1 - selected_camera;
 			});
 			this.key_triggered_button("Hit Ball", [" "], () => {
-				if(!hitting) {
+			    if(!hitting) {
 					hitting = true;
 					hit_anim_start = this.t;
 					hit_force = this.get_current_force_value();
@@ -642,92 +687,59 @@ window.Billiards_Game = window.classes.Billiards_Game =
 		//
 		//END CAMERA AND CUE CODE
 
+        // adds velocity to cue ball using dynamic_camera_xy_angle and hit_force values
+        hit_cue_ball() {
+            this.balls[0].setVel(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0,0,1)).times(Vec.of(1, 0, 0, 0).times(MAX_HITTING_SPEED * hit_force)).to3());
+        }
+
+
+
         display(graphics_state) {
-            graphics_state.lights = this.lights;        // Use the lights stored in this.lights.
-            const t = graphics_state.animation_time / 1000, dt = graphics_state.animation_delta_time / 1000;
+            graphics_state.lights = this.lights;
+            this.t += graphics_state.animation_delta_time / 1000;
 
-
-            // TODO:  Fill in matrix operations and drawing code to draw the solar system scene (Requirements 2 and 3)
-
-
-            //this.shapes.torus2.draw(graphics_state, Mat4.identity(), this.materials.test);
 
             this.ballCollider.updateBalls();
-            // console.log(this.balls[0].pos + "\n");
-            for (var i = 0; i < this.balls.length; i++) {
+            for (let i = 0; i < this.balls.length; i++) {
                 this.balls[i].draw(graphics_state);
             }
 
-            static_camera_matrix = Mat4.look_at( Vec.of( 0,0,200 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) );
+            // check if balls hit pockets, make them invisible and adding them to this.sunkBallNums if they have
+            // invisible balls dont collide with anything
+            for (let i = 0; i < this.balls.length; i++) {
+                for (let j = 0; j < POCKET_POSITIONS.length; j++) {
+                    if (this.balls[i].pos.minus(POCKET_POSITIONS[j]).norm() < POCKET_RAD) {
+                        this.balls[i].setPos(Vec.of(0,0,-50));
+                        this.balls[i].setVel(Vec.of(0,0,0));
+                        this.balls[i].visible = false;
+                        this.sunkBallNums.push(this.balls[i].number);
+                    }
+                }
+            }
+
+            // check if turn over
+            if (endTurn) {
+                let gameOver = gui.game.pocketedBalls(this.sunkBallNums);
+
+                // reset cue ball if it was sunk
+                if (this.sunkBallNums.includes(0)) {
+                    this.balls[0].setPos(Vec.of(0, -30, 0));
+                    this.balls[0].setVel(Vec.of(0,0,0));
+                    this.balls[0].visible = true;
+                }
+
+                // if game over, reset all balls
+                if (gameOver) {
+                    this.ballCollider.resetPositions();
+                }
+
+                // reset flags and turn vars
+                this.sunkBallNums = [];
+                cue_hit = false;
+                hitting = false;
+                endTurn = false;
+            }
+
             this.update_camera(graphics_state);           
-        }
-    };
-
-
-// Extra credit begins here (See TODO comments below):
-
-window.Ring_Shader = window.classes.Ring_Shader =
-    class Ring_Shader extends Shader {
-        // Subclasses of Shader each store and manage a complete GPU program.
-        material() {
-            // Materials here are minimal, without any settings.
-            return {shader: this}
-        }
-
-        map_attribute_name_to_buffer_name(name) {
-            // The shader will pull single entries out of the vertex arrays, by their data fields'
-            // names.  Map those names onto the arrays we'll pull them from.  This determines
-            // which kinds of Shapes this Shader is compatible with.  Thanks to this function,
-            // Vertex buffers in the GPU can get their pointers matched up with pointers to
-            // attribute names in the GPU.  Shapes and Shaders can still be compatible even
-            // if some vertex data feilds are unused.
-            return {object_space_pos: "positions"}[name];      // Use a simple lookup table.
-        }
-
-        // Define how to synchronize our JavaScript's variables to the GPU's:
-        update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
-            const proj_camera = g_state.projection_transform.times(g_state.camera_transform);
-            // Send our matrices to the shader programs:
-            gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(model_transform.transposed()));
-            gl.uniformMatrix4fv(gpu.projection_camera_transform_loc, false, Mat.flatten_2D_to_1D(proj_camera.transposed()));
-        }
-
-        shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
-        {
-            return `precision mediump float;
-              varying vec4 position;
-              varying vec4 center;
-      `;
-        }
-
-        vertex_glsl_code()           // ********* VERTEX SHADER *********
-        {
-            return `
-        attribute vec3 object_space_pos;
-        uniform mat4 model_transform;
-        uniform mat4 projection_camera_transform;
-
-        void main()
-        { 
-        }`;           // TODO:  Complete the main function of the vertex shader (Extra Credit Part II).
-        }
-
-        fragment_glsl_code()           // ********* FRAGMENT SHADER *********
-        {
-            return `
-        void main()
-        { 
-        }`;           // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
-        }
-    };
-
-window.Grid_Sphere = window.classes.Grid_Sphere =
-    class Grid_Sphere extends Shape           // With lattitude / longitude divisions; this means singularities are at
-    {
-        constructor(rows, columns, texture_range)             // the mesh's top and bottom.  Subdivision_Sphere is a better alternative.
-        {
-            super("positions", "normals", "texture_coords");
-            // TODO:  Complete the specification of a sphere with lattitude and longitude lines
-            //        (Extra Credit Part III)
         }
     };
