@@ -58,6 +58,58 @@ function onLoad() {
     gui.setupGame();
 }
 
+//SOUND MANAGER - SAM
+class SoundManager {
+	constructor() {
+		this.clinking_balls = [new Audio("assets/sounds/balls_colliding_1.ogg"), new Audio("assets/sounds/balls_colliding_2.ogg"), new Audio("assets/sounds/balls_colliding_3.ogg"), new Audio("assets/sounds/balls_colliding_4.ogg"), new Audio("assets/sounds/balls_colliding_5.ogg"), new Audio("assets/sounds/balls_colliding_6.ogg"), new Audio("assets/sounds/balls_colliding_7.ogg")];
+		this.start_sound = new Audio("assets/sounds/start.ogg");
+		this.pocket_sound = [new Audio("assets/sounds/pocket.ogg"), new Audio("assets/sounds/pocket.ogg"), new Audio("assets/sounds/pocket.ogg"), new Audio("assets/sounds/pocket.ogg")];
+		this.cue_sound = new Audio("assets/sounds/cue_hit.ogg");
+		this.wall_sound = [new Audio("assets/sounds/wall_hit_1.ogg"), new Audio("assets/sounds/wall_hit_1.ogg"), new Audio("assets/sounds/wall_hit_3.ogg"), new Audio("assets/sounds/wall_hit_2.ogg"), new Audio("assets/sounds/wall_hit_1.ogg"), new Audio("assets/sounds/wall_hit_2.ogg"), new Audio("assets/sounds/wall_hit_3.ogg")];
+		this.clinking_balls[0].volume = 0.4;
+		this.clinking_balls[1].volume = 0.4;
+		this.clinking_balls[2].volume = 0.4;
+		this.clinking_balls[3].volume = 0.4;
+		this.clinking_balls[4].volume = 0.4;
+		this.clinking_balls[5].volume = 0.4;
+		this.clinking_balls[6].volume = 0.4;
+		this.wall_sound[0].volume = 0.3;
+		this.wall_sound[1].volume = 0.3;
+		this.wall_sound[2].volume = 0.3;
+		this.wall_sound[3].volume = 0.3;
+		this.wall_sound[4].volume = 0.3;
+		this.wall_sound[5].volume = 0.3;
+		this.wall_sound[6].volume = 0.3;
+		this.clink_index = 0;
+		this.wall_index = 0;
+		this.pocket_index = 0;
+	}
+	
+	play_balls_clink() {
+		this.clinking_balls[this.clink_index].play();
+		this.clink_index = (this.clink_index + 1) % 7;
+	}
+	
+	play_start_sound() {
+		this.start_sound.play();
+	}
+	
+	play_pocket_sound() {
+		this.pocket_sound[this.pocket_index].play();
+		this.pocket_index = (this.pocket_index + 1) % 4;
+	}
+	
+	play_wall_sound() {
+		this.wall_sound[this.wall_index].play();
+		this.wall_index = (this.wall_index + 1) % 7;
+	}
+	
+	play_cue_sound() {
+		this.cue_sound.play();
+	}
+}
+var soundmanager = new SoundManager();
+
 // ball class
 class Ball {
     // number = 0-15 (0=cue ball)
@@ -231,6 +283,7 @@ class BallCollider {
 
             this.removeCompletedCollision();
             this.removeCollisions(collision.ballIndex);
+			soundmanager.play_wall_sound();
         }
 
         // wall collision, y-dir
@@ -249,6 +302,7 @@ class BallCollider {
 
             this.removeCompletedCollision();
             this.removeCollisions(collision.ballIndex);
+			soundmanager.play_wall_sound();
         }
 
         // ball-ball collisions
@@ -281,6 +335,7 @@ class BallCollider {
             this.removeCompletedCollision();
             this.removeCollisions(collision.ballIndex);
             this.removeCollisions(collision.ballIndex2);
+			soundmanager.play_balls_clink();
         }
     }
 
@@ -671,6 +726,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
 		    else if (!cue_hit) {
 		        this.hit_cue_ball();
 		        cue_hit = true;
+				soundmanager.play_cue_sound();
             }
 		    else if (!endTurn && this.ballCollider.allBallsStopped()) {
 		        endTurn = true;
@@ -718,6 +774,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
                         this.balls[i].setVel(Vec.of(0,0,0));
                         this.balls[i].visible = false;
                         this.sunkBallNums.push(this.balls[i].number);
+						soundmanager.play_pocket_sound();
                     }
                 }
             }

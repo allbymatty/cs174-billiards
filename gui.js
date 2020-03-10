@@ -4,6 +4,7 @@ class GUI {
     }
 
     setupGame() {
+	  soundmanager.play_start_sound();	
       document.getElementById('menu').style.display="none";
       document.getElementById('game-canvas').style.display="block";
       document.getElementById('HUD').style.display="block";
