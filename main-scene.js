@@ -12,7 +12,7 @@ const POCKET_POSITIONS = [
     Vec.of(TABLE_WIDTH / 2, 0, 0),
     Vec.of(-TABLE_WIDTH / 2, 0, 0)
 ]
-const POCKET_RAD = 2 * BALL_RAD; // balls count as sunk if they get within this distance of a pocket position
+const POCKET_RAD = 3 * BALL_RAD; // balls count as sunk if they get within this distance of a pocket position
 
 // const FRICTION_ACC = 0.01; // units per tick^2 - looks unnatural
 const FRICTION_SPEED_FRACTION = 0.99; // each tick, the speed of each ball is multiplied by this coefficient
@@ -26,6 +26,8 @@ const REWIND_MARGIN = -1e-6 // allows previous collision times to be detected an
 // due to floating point error for collisions that happen almost simultaneously
 
 const MAX_HITTING_SPEED = 5; // max speed achievable when hitting the cue ball
+
+const MAX_GRAV_ACC = 0.1; // acceleration (units/s^2) of balls downwards when they are fully in a pocket circle
 
 // assumptions
 // table centered around 0,0
@@ -129,6 +131,11 @@ class Ball {
       
         // saves whether this ball should be drawn and collided with
         this.visible = true;
+
+        // saves whether the ball is inside a pocket
+        // -1 = not sinking
+        // otherwise = index of pocket its sunk in
+        this.sinking = -1;
     }
 
     // --------------- IMPORTANT FUNCTIONS TO CALL
@@ -151,6 +158,53 @@ class Ball {
         }
         else {
             this.velDir = newVel.normalized();
+        }
+    }
+    // call this every display loop
+    checkIfSinking() {
+        for (let i = 0; i < POCKET_POSITIONS.length && this.sinking < 0 && this.visible; i++)
+            if (this.pos.minus(POCKET_POSITIONS[i]).norm() <= POCKET_RAD)
+                this.sinking = i;
+    }
+    // call this every display loop
+    checkIfSunk() {
+        if (this.visible && this.sinking >= 0 && this.pos[2] < -3 * BALL_RAD)
+            return true;
+
+        return false;
+    }
+    // call every display loop
+    // force sinking ball to stay in pocket
+    // includes collisions
+    stayInPocket() {
+        if (this.visible && this.sinking >= 0) {
+            let pos = Vec.of(this.pos[0], this.pos[1], 0);
+            let pocketPos = POCKET_POSITIONS[this.sinking];
+            let realVel = this.velDir.times(this.speed);
+            let vel2D = Vec.of(realVel[0], realVel[1], 0);
+
+            // max allowable dist depends on height of ball
+            let maxDist = POCKET_RAD;
+            if (this.pos[2] >= -BALL_RAD && this.pos[2] <= 0) {
+                let height = BALL_RAD + this.pos[2]; // height of ball center above table
+                maxDist -= Math.sqrt(Math.pow(BALL_RAD, 2) - Math.pow(height, 2));
+            }
+            else {
+                maxDist -= BALL_RAD;
+            }
+
+            if (pos.minus(pocketPos).norm() > maxDist) {
+                let newPos2D = pocketPos.plus(pos.minus(pocketPos).normalized().times(0.98 * maxDist));
+                this.pos = Vec.of(newPos2D[0], newPos2D[1], this.pos[2]);
+
+                // change vel
+                let radialOut = pos.minus(pocketPos).normalized();
+                let projection = radialOut.times(vel2D.dot(radialOut));
+                vel2D = vel2D.minus(projection.times(1.9));
+                this.setVel(Vec.of(vel2D[0], vel2D[1], realVel[2]));
+
+                soundmanager.play_wall_sound();
+            }
         }
     }
 
@@ -186,6 +240,26 @@ class Ball {
             this.speed = 0;
         else
             this.speed *= FRICTION_SPEED_FRACTION;
+
+        // add grav acceleration if ball sinking but not yet completely sunk
+        if (this.visible && this.sinking >= 0) {
+            // gravitational acceleration has less effect if the ball isn't completely in the pocket yet
+            let pos = Vec.of(this.pos[0], this.pos[1], 0);
+            let scale = (POCKET_RAD - pos.minus(POCKET_POSITIONS[this.sinking]).norm()) / BALL_RAD;
+            if (scale < 0) scale = 0;
+            if (scale > 1) scale = 1;
+            // scale goes from 0 (on edge of pocket) to 1 (fully inside pocket)
+            let grav_acc = scale * MAX_GRAV_ACC;
+
+
+
+            let vel = this.velDir.times(this.speed);
+            vel = vel.minus(Vec.of(0, 0, grav_acc));
+
+            // update ball vars
+            this.speed = vel.norm();
+            this.velDir = vel.normalized();
+        }
     }
 }
 
@@ -344,9 +418,8 @@ class BallCollider {
         for (var i = 0; i < this.pathSegments.length; i++) {
             var segment = this.pathSegments[i];
 
-            // dont compute collisions if collisions already computed or if ball invisible
-            if (!this.balls[i].visible || !segment.collisionsRegistered) {
-
+            // dont compute collisions if collisions already computed or if ball invisible or if ball sinking
+            if (this.balls[i].visible && this.balls[i].sinking < 0 && !segment.collisionsRegistered) {
                 // wall collisions x
                 var t = segment.timeOfWallCollisionX();
                 if (t >= REWIND_MARGIN) {
@@ -359,12 +432,13 @@ class BallCollider {
                     this.addCollision(new Collision(t, 2, i));
                 }
 
+
                 // ball collisions
                 for (var j = 0; j < this.pathSegments.length; j++) {
                     // only check collisions with pathsegments with collisionsRegistered = true - avoids double counting - this pathsegment (i) will become collisionsRegistered = true at the end of this loop
-                    // also dont check collisions with invisible balls
+                    // also dont check collisions with invisible balls or sinking balls
                     var otherSegment = this.pathSegments[j];
-                    if (i != j && this.balls[j].visible && otherSegment.collisionsRegistered) {
+                    if (i != j && this.balls[j].visible && this.balls[j].sinking < 0 && otherSegment.collisionsRegistered) {
                         t = segment.timeOfCollisionWith(otherSegment);
                         if (t >= REWIND_MARGIN) {
                             this.addCollision(new Collision(t, 0, i, j));
@@ -759,25 +833,34 @@ window.Billiards_Game = window.classes.Billiards_Game =
             graphics_state.lights = this.lights;
             this.t += graphics_state.animation_delta_time / 1000;
 
+            // debug - draw pocket spheres
+            for (let i = 0; i < POCKET_POSITIONS.length; i++) {
+                this.shapes.ball.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i]).times(Mat4.scale(Vec.of(POCKET_RAD, POCKET_RAD, 0.1))), this.materials.default.override({color: Color.of(1,1,1,0.25)}));
+            }
 
-            this.ballCollider.updateBalls();
+
+            this.ballCollider.updateBalls(); // invisible balls dont collide, sinking balls dont collide in this function
+            // check if balls hit pockets, make them invisible and adding them to this.sunkBallNums if they have
+            // make sure balls stay in pockets, colliding them against pocket walls
+            // draw balls
             for (let i = 0; i < this.balls.length; i++) {
+                this.balls[i].checkIfSinking(); // sets sinking flag if ball is in pocket, this will make it fall downward and only collide with pocket walls
+
+                // ensure that sinking balls stay in pocket
+                this.balls[i].stayInPocket();
+
+                if (this.balls[i].checkIfSunk()) { // check if ball has fallen low enough, in which case it returns true
+                    this.balls[i].visible = false;
+                    this.balls[i].sinking = -1;
+                    this.balls[i].setPos(Vec.of(0, 0, 10));
+                    this.balls[i].setVel(Vec.of(0, 0, 0));
+                    this.sunkBallNums.push(this.balls[i].number);
+                    soundmanager.play_pocket_sound();
+                }
+
                 this.balls[i].draw(graphics_state);
             }
 
-            // check if balls hit pockets, make them invisible and adding them to this.sunkBallNums if they have
-            // invisible balls dont collide with anything
-            for (let i = 0; i < this.balls.length; i++) {
-                for (let j = 0; j < POCKET_POSITIONS.length; j++) {
-                    if (this.balls[i].pos.minus(POCKET_POSITIONS[j]).norm() < POCKET_RAD) {
-                        this.balls[i].setPos(Vec.of(0,0,-50));
-                        this.balls[i].setVel(Vec.of(0,0,0));
-                        this.balls[i].visible = false;
-                        this.sunkBallNums.push(this.balls[i].number);
-						soundmanager.play_pocket_sound();
-                    }
-                }
-            }
 
             // check if turn over
             if (endTurn) {
@@ -793,6 +876,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
                 // if game over, reset all balls
                 if (gameOver) {
                     this.ballCollider.resetPositions();
+                    gui.setupGame();
                 }
 
                 // reset flags and turn vars
