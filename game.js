@@ -39,8 +39,23 @@ class Game {
         }
         else if (ballNums.includes(0)) {
             // remove any other pocketed balls from remaining_balls
+            // set teams if needed
+            let ballType = 'none';
             for (let i = 0; i < ballNums.length; i++) {
                 if (ballNums[i] != 0) {
+                    // set teams if not set
+                    if (this.teams[PLAYER1] == '') {
+                        // Find the type of the pocketed ball
+                        if (ballType == 'none') {
+                            if (ballNums[i] < 8)
+                                ballType = 'solid';
+                            else
+                                ballType = 'striped';
+                        }
+
+                        this.setTeams(this.turnName, ballType);
+                    }
+
                     for (let j = 0; j < this.remaining_balls.length; j++) {
                         if (ballNums[i] == this.remaining_balls[j]) {
                             this.remaining_balls.splice(j, 1);
