@@ -457,6 +457,10 @@ function getRandomInt(min, max) {
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
+
 window.Billiards_Game = window.classes.Billiards_Game =
     class Billiards_Game extends Scene_Component {
         constructor(context, control_box)
@@ -495,7 +499,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
 					else {
 						let cursorPos = Vec.of(e.screenX, -e.screenY, 0);
 						let temp = cursorPos.minus(this.mouse_init_position);
-						dynamic_camera_xy_angle = Math.atan2(temp[1], temp[0]) - Math.PI / 2;
+						dynamic_camera_xy_angle = Math.atan2(temp[1], temp[0]);
 					}
 				}
             });
@@ -541,7 +545,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
             // One corner ball must be striped and the other solid
             // The rest of the balls are placed randomly
 
-            let nums = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15],
+            let nums = new Set(shuffle([1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15])),
               leftCorner = 0,
               rightCorner = 0;
 
@@ -551,27 +555,28 @@ window.Billiards_Game = window.classes.Billiards_Game =
               rightCorner = getRandomInt(9,16);
 
               // Remove the corner balls from nums
-              nums.splice((leftCorner-1), 1);
-              nums.splice((rightCorner-2), 1);
+              nums.delete(leftCorner);
+              nums.delete(rightCorner);
             }
             else {
               leftCorner = getRandomInt(9,16);
               rightCorner = getRandomInt(1,8);
 
               // Remove the corner balls from nums
-              nums.splice((leftCorner-2), 1);
-              nums.splice((rightCorner-1), 1);
+              nums.delete(leftCorner);
+              nums.delete(rightCorner);
             }
 
             let randNums = [],
               i = nums.length,
               j = 0;
 
-            while (i--) {
-            	j = Math.floor(Math.random() * (i+1));
-            	randNums.push(nums[j]);
-            	nums.splice(j,1);
-            }
+			let it = nums.values();
+			let temp = null;
+            do {
+				temp = it.next();
+            	randNums.push(temp.value);
+            } while(!temp.done);
 
             // list of balls
             this.balls = [
