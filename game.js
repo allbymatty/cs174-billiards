@@ -13,6 +13,8 @@ class Game {
         this.turnName = 'player1';
         this.turnNum = PLAYER1;
 
+        this.gui.updateTurn(this.turnName, false);
+
         // Indicates the teams of the players (striped vs solid)
         this.teams = ['', ''];
     }
@@ -65,14 +67,15 @@ class Game {
                 }
             }
 
-            // Scratch
-            alert("SCRATCH!");
+            // Scratch              
             this.turnName = (this.turnName == 'player1' ? 'player2' : 'player1');
             this.turnNum = (this.turnNum == PLAYER1 ? PLAYER2 : PLAYER1);
-            this.gui.updateTurn(this.turnName);
+            this.gui.updateTurn(this.turnName, true);
             this.gui.updateHUD(this.remaining_balls, this.teams);
         }
         else if (ballNums.includes(8)) {
+            console.log("8 ball sunked by");
+            console.log(this.turnName);
             // remove any other pocketed balls from remaining_balls
             // remove ONLY those that were sunk before 8 ball
             let i = 0;
@@ -87,54 +90,64 @@ class Game {
             this.gui.updateHUD(this.remaining_balls, this.teams);
 
             // Assume winning
-            let valid = true;
+            var valid = true;
 
             // Check remaining balls of player who made the 8-ball 
             if (this.teams[this.turnNum] == 'solid') { // SOLID
                 for (var k = 0; k < this.remaining_balls.length; k++) {
-                    if (this.remaining_balls[k] < 8) 
+                    if (this.remaining_balls[k] < 8) {
                         valid = false;
+                        console.log(valid);
+                        console.log("solid ball remaining");
+                        break;
+                    }
                 }
             }
             else { // STRIPED
                 for (var k = 0; k < this.remaining_balls.length; k++) {
-                    if (this.remaining_balls[k] > 8) 
+                    if (this.remaining_balls[k] > 8) {
                         valid = false;
+                        console.log(valid);
+                        console.log("striped ball remaining");
+                        break;
+                    }
                 }
             }
 
             // Declare winner
             var winner;
+            console.log(valid);
             if (valid) 
                 winner = this.turnName;
             else
-                winner = this.turnName == 'player1' ? 'player1' : 'player2', 
+                winner = this.turnName == 'player1' ? 'player2' : 'player1', 
 
             this.gui.endGame(winner);
             return true;
 
         }
         else {
-            // remove balls from remaining_balls
-            let ballType = 'none';
-            for (let i = 0; i < ballNums.length; i++) {
-                // Find the type of the pocketed ball
-                if (ballType == 'none') {
-                    if (ballNums[i] < 8)
-                        ballType = 'solid';
-                    else
-                        ballType = 'striped';
-                }
-                else {
-                    if (ballType == 'solid' && ballNums[i] > 8)
-                        ballType = 'mixed';
-                    else if (ballType == 'striped' && ballNums[i] < 8)
-                        ballType = 'mixed';
-                }
+            let firstBall = '';
+            if (ballNums[0] < 8)
+                firstBall = 'solid';
+            else
+                firstBall = 'striped';
 
-                // Set teams if have not already
-                if (this.teams[PLAYER1] == '')
-                    this.setTeams(this.turnName, ballType);
+            // Set teams if have not already
+            if (this.teams[PLAYER1] == '')
+                    this.setTeams(this.turnName, firstBall);
+
+            // Remove first ball and other balls if any
+            let mixed = false;
+            for (let i = 0; i < ballNums.length; i++) {
+
+                // Check for mixed balls
+                if (!mixed) {
+                    if (firstBall == 'solid' && ballNums[i] > 8)
+                        mixed = true;
+                    else if (firstBall == 'striped' && ballNums[i] < 8)
+                        mixed = true;
+                }
 
                 // Remove ball from remaining
                 for (var k = 0; k < this.remaining_balls.length; k++) {
@@ -145,19 +158,20 @@ class Game {
                 }
             }
 
-            // If player made other player's ball, switch turns
-            // Otherwise keep turn
+            // If player makes both types of balls, keep turn 
+            // If player makes only other player's ball, switch turns
+            // Otherwise stay turn
             console.log(this.turnName);
             console.log(this.teams[this.turnNum]);
-            console.log(ballType);
             console.log("DONE");
-            if (this.teams[this.turnNum] != ballType) {
+            
+            if (!mixed && firstBall != this.teams[this.turnNum]) {
                 this.turnName = (this.turnName == 'player1' ? 'player2' : 'player1');
                 this.turnNum = (this.turnNum == PLAYER1 ? PLAYER2 : PLAYER1);
                 console.log(this.turnName);
                 console.log(this.turnNum);
             }
-            this.gui.updateTurn(this.turnName);
+            this.gui.updateTurn(this.turnName, false);
 
             // Make corresponding updates to HUD
             this.gui.updateHUD(this.remaining_balls, this.teams);
