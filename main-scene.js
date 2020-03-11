@@ -206,7 +206,7 @@ class Ball {
                     vel2D = vel2D.minus(projection.times(1.9));
                     this.setVel(Vec.of(vel2D[0], vel2D[1], realVel[2]));
 
-                    soundmanager.play_wall_sound();
+                    // soundmanager.play_wall_sound();
                 }
             }
         }
@@ -816,10 +816,11 @@ window.Billiards_Game = window.classes.Billiards_Game =
                 cue_transform = Mat4.translation(this.balls[0].pos)
                     .times(Mat4.translation(Vec.of(0,0,-1)))
                     .times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1)))
+                    .times(Mat4.translation(Vec.of(1,0,0)))
                     .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
                     .times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
-                    .times(Mat4.translation([0.7, 0, 0]));
+                    .times(Mat4.translation([0.75, 0, 0]));
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (this.t - hit_anim_start < 0.1) {
@@ -829,7 +830,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
                     .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
                     .times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
-                    .times(Mat4.translation([0.7, 0, 0]));
+                    .times(Mat4.translation([0.75, 0, 0]));
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (!cue_hit) {
