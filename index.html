@@ -30,7 +30,7 @@
         <!-- Start Menu //-->
         <div id="menu" style="display:block" class="start-menu">
             <img src="assets/8ball_graphic.png" class="logo">
-            <button onclick="gui.setupGame()" class="play-btn">Play Game</button>
+            <button onclick="gui.setupGame()" class="play-btn main-btn">Play Game</button>
         </div>
 
         <!-- Game Screen //-->
@@ -39,7 +39,7 @@
         <!-- Player HUD //-->
         <div id="HUD" style="display:none" class="playerHUD">
             <div class="player player1 unknown">
-              <h6>Player 1 <span></span></h5>
+              <h6>Player 1 <span></span></h6>
               <ul>
                 <li>?</li>
                 <li>?</li>
@@ -52,7 +52,7 @@
             </div>
 
             <div class="player player2 unknown">
-              <h6>Player 2 <span></span></h5>
+              <h6>Player 2 <span></span></h6>
               <ul>
                 <li>?</li>
                 <li>?</li>
@@ -62,6 +62,27 @@
                 <li>?</li>
                 <li>?</li>
               </ul>
+            </div>
+
+            <div id="end-screen" style="display:none">
+                <h1>Game Over</h1>
+                <p id="statement">Player 2 Wins!</p>
+                <button onclick="gui.resetGame()" class="reset-btn main-btn">Reset Game</button>
+            </div>
+
+            <div id="turn-screen">
+                <div class="row">
+                    <div class="col">
+                        <img src="assets/right_arrow.png" id="left-arrow" style="display:none" class="left-arrow">
+                    </div>
+                    <div class="col">
+                       <h3 id="turn-statement"></h3>
+                       <h6 id="scratch-statement"></h6>
+                    </div>
+                    <div class="col">
+                        <img src="assets/left_arrow.png" id="right-arrow" style="display:none" class="right-arrow" align="right">
+                    </div>
+                </div>
             </div>
 
         </div>
