@@ -43,7 +43,7 @@ class GUI {
         document.getElementById('right-arrow').style.display="none";
 
         if (scratch)
-            document.getElementById("scratch-statement").innerHTML = "Player 1 Scratch!";
+            document.getElementById("scratch-statement").innerHTML = "Player 2 Scratch!";
 
       }
       else {
