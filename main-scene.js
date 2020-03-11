@@ -199,11 +199,15 @@ class Ball {
 
                 // change vel
                 let radialOut = pos.minus(pocketPos).normalized();
-                let projection = radialOut.times(vel2D.dot(radialOut));
-                vel2D = vel2D.minus(projection.times(1.9));
-                this.setVel(Vec.of(vel2D[0], vel2D[1], realVel[2]));
+                let projScalar = vel2D.dot(radialOut);
 
-                soundmanager.play_wall_sound();
+                if (projScalar > 0) {
+                    let projection = radialOut.times(projScalar);
+                    vel2D = vel2D.minus(projection.times(1.9));
+                    this.setVel(Vec.of(vel2D[0], vel2D[1], realVel[2]));
+
+                    soundmanager.play_wall_sound();
+                }
             }
         }
     }
@@ -837,6 +841,8 @@ window.Billiards_Game = window.classes.Billiards_Game =
             for (let i = 0; i < POCKET_POSITIONS.length; i++) {
                 this.shapes.ball.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i]).times(Mat4.scale(Vec.of(POCKET_RAD, POCKET_RAD, 0.1))), this.materials.default.override({color: Color.of(1,1,1,0.25)}));
             }
+            // debug - draw table square
+            this.shapes.cube.draw(graphics_state, Mat4.scale([TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 1]).times(Mat4.translation(Vec.of(0,0,-1))), this.materials.default.override({color: Color.of(0.2, 0.8, 0.2, 1)}));
 
 
             this.ballCollider.updateBalls(); // invisible balls dont collide, sinking balls dont collide in this function
