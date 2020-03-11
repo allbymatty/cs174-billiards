@@ -642,7 +642,13 @@ window.Billiards_Game = window.classes.Billiards_Game =
 			
             const shapes = {
                 ball: new Subdivision_Sphere(5),
-                cube: new Cube()
+                cube: new Cube(),
+				cue : 	new Cue(),
+				tablelegs : 	new table_legs(),
+				tablesides : 	new table_sides(),
+				tabletop : 	new table_top(),
+				tabletopedge : 	new table_top_edge(),
+				tableunderside : 	new table_underside()
             };
             this.submit_shapes(context, shapes);
 
@@ -668,6 +674,12 @@ window.Billiards_Game = window.classes.Billiards_Game =
 						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/14ball.jpg", true)}),
 						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/15ball.jpg", true)})
                 	],
+					cue: context.get_instance(Phong_Shader).material(
+						Color.of(0, 0, 0, 1), {
+							ambient: 1,
+							texture: context.get_instance("assets/models/cue_stick/cue_stick.png")
+						}
+					),
                     default: context.get_instance(Phong_Shader).material(Color.of(1,1,1,1), {ambient: 1})
                 };
 
@@ -794,12 +806,12 @@ window.Billiards_Game = window.classes.Billiards_Game =
 		draw_cue(graphics_state) {
 		    let cue_transform = Mat4.identity();
 		    if (!hitting) {
-                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0,0,1))).times(Mat4.translation([-(2 * BALL_RAD * this.get_current_force_value() + BALL_RAD), 0, BALL_RAD])).times(Mat4.scale([10 * BALL_RAD, .25, .25])).times(Mat4.translation([-1, 0, 0]));
-                this.shapes.cube.draw(graphics_state, cue_transform, this.materials.default);
+                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1))).times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD])).times(Mat4.scale([20, 20, 20])).times(Mat4.translation([0.7, 0, 0]));
+                this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (this.t - hit_anim_start < 0.1) {
-                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle, Vec.of(0,0,1))).times(Mat4.translation([-((0.1 - this.t + hit_anim_start) / 0.1 * 2 * BALL_RAD * hit_force + BALL_RAD), 0, BALL_RAD])).times(Mat4.scale([10 * BALL_RAD, .25, .25])).times(Mat4.translation([-1, 0, 0]));
-                this.shapes.cube.draw(graphics_state, cue_transform, this.materials.default);
+                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1))).times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD])).times(Mat4.scale([20, 20, 20])).times(Mat4.translation([0.7, 0, 0]));
+                this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (!cue_hit) {
 		        this.hit_cue_ball();
