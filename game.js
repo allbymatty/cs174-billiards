@@ -69,6 +69,7 @@ class Game {
                     for (let j = 0; j < this.remaining_balls.length; j++) {
                         if (ballNums[i] == this.remaining_balls[j]) {
                             this.remaining_balls.splice(j, 1);
+                            console.log(ballNums[i] + "removed!");
                             break;
                         }
                     }
@@ -91,6 +92,7 @@ class Game {
                 for (let j = 0; j < this.remaining_balls.length; j++) {
                     if (ballNums[i] == this.remaining_balls[j]) {
                         this.remaining_balls.splice(j, 1);
+                        console.log(ballNums[i] + "removed!");
                         break;
                     }
                 }
@@ -103,7 +105,7 @@ class Game {
             // Check remaining balls of player who made the 8-ball 
             if (this.teams[this.turnNum] == 'solid') { // SOLID
                 for (var k = 0; k < this.remaining_balls.length; k++) {
-                    if (this.remaining_balls[k] < 8) {
+                    if (this.remaining_balls[k] < 8 && this.remaining_balls[k] != 0) {
                         valid = false;
                         console.log(valid);
                         console.log("solid ball remaining");
@@ -161,6 +163,7 @@ class Game {
                 for (var k = 0; k < this.remaining_balls.length; k++) {
                     if (ballNums[i] == this.remaining_balls[k]) {
                         this.remaining_balls.splice(k, 1);
+                        console.log(ballNums[i] + "removed!");
                         break;
                     }
                 }
