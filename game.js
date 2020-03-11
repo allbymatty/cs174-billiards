@@ -128,7 +128,7 @@ class Game {
             if (valid) 
                 winner = this.turnName;
             else
-                winner = this.turnName == 'player1' ? 'player2' : 'player1', 
+                winner = this.turnName == 'player1' ? 'player2' : 'player1'; 
 
             this.gui.endGame(winner);
             return true;
