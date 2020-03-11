@@ -205,7 +205,6 @@ class Ball {
                 // change vel
                 let radialOut = pos.minus(pocketPos).normalized();
                 let projScalar = vel2D.dot(radialOut);
-
                 if (projScalar > 0) {
                     let projection = radialOut.times(projScalar);
                     vel2D = vel2D.minus(projection.times(1.9));
@@ -695,6 +694,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
 			shadowmat = this.materials.shadow;
             this.lights = [new Light(Vec.of(0, 0, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, 50, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, -50, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, 50, 0, 1), Color.of(1, 1, 1, 1), 1e8), new Light(Vec.of(0, 50, 0, 1), Color.of(1, 1, 1, 1), 1e8)];
 
+
             // Determine setup of the balls
             // 8 ball is placed in center of rack (middle of third row)
             // One corner ball must be striped and the other solid
@@ -824,6 +824,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
                     .times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
                     .times(Mat4.translation([0.7, 0, 0]));
+
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (this.t - hit_anim_start < 0.1) {
@@ -834,6 +835,7 @@ window.Billiards_Game = window.classes.Billiards_Game =
                     .times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
                     .times(Mat4.translation([0.7, 0, 0]));
+
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (!cue_hit) {
