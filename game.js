@@ -33,8 +33,16 @@ class Game {
     // takes list of pocket balls, in order of sinking
     // returns true if game over
     pocketedBalls(ballNums) {
+        // If no balls made, switch turns
+        if (ballNums.length == 0) {
+            this.turnName = (this.turnName == 'player1' ? 'player2' : 'player1');
+            this.turnNum = (this.turnNum == PLAYER1 ? PLAYER2 : PLAYER1);
+            this.gui.updateTurn(this.turnName, false);
+            console.log("NO BALLS MADE");
+        }
+
         //check if they scratched and also got 8-ball in, losing game
-        if (ballNums.includes(0) && ballNums.includes(8)) {
+        else if (ballNums.includes(0) && ballNums.includes(8)) {
             winner = this.turnName == 'player1' ? 'player2' : 'player1';
             this.gui.endGame(winner);
             return true;

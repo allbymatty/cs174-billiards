@@ -88,11 +88,11 @@
     color: white;
     display: block;
     text-align: center;
-    padding-top: 12px;
+    padding-top: 16px;
 }
 
 #turn-statement {
-  padding-top: 9px;
+  padding-top: 12px;
 }
 
 .right-arrow {
@@ -209,6 +209,6 @@
 }
 
 #scratch-statement {
-  font-size: 12px;
+  font-size: 15px;
   color: red;
 }
