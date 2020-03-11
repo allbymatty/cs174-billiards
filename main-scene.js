@@ -29,6 +29,9 @@ const MAX_HITTING_SPEED = 10; // max speed achievable when hitting the cue ball
 
 const MAX_GRAV_ACC = 0.1; // acceleration (units/s^2) of balls downwards when they are fully in a pocket circle
 
+shadowmat = null; 
+shadow = null;
+
 // assumptions
 // table centered around 0,0
 // table is at level z=0, so balls are translated by one BALL_RAD upwards
@@ -125,7 +128,7 @@ class Ball {
     
         this.shape = shape;
         this.material = material;
-
+		
         // saves how much the ball has rotated
         this.rotateMatrix = Mat4.identity();
       
@@ -144,8 +147,10 @@ class Ball {
         return this.speed == 0;
     }
     draw(graphics_state) {
-        if (this.visible)
+        if (this.visible) {
+			shadow.draw(graphics_state, Mat4.translation([this.modelTransform()[0][3], this.modelTransform()[1][3], this.modelTransform()[2][3] - BALL_RAD + 0.05 + this.number * 0.001]).times(Mat4.scale([8, 8, 8])), shadowmat);
             this.shape.draw(graphics_state, this.modelTransform(), this.material);
+        }
     }
     setPos(newPos) {
         this.pos = newPos;
@@ -200,13 +205,12 @@ class Ball {
                 // change vel
                 let radialOut = pos.minus(pocketPos).normalized();
                 let projScalar = vel2D.dot(radialOut);
-
                 if (projScalar > 0) {
                     let projection = radialOut.times(projScalar);
                     vel2D = vel2D.minus(projection.times(1.9));
                     this.setVel(Vec.of(vel2D[0], vel2D[1], realVel[2]));
 
-                    // soundmanager.play_wall_sound();
+                    soundmanager.play_wall_sound();
                 }
             }
         }
@@ -648,10 +652,11 @@ window.Billiards_Game = window.classes.Billiards_Game =
 				tablesides : 	new table_sides(),
 				tabletop : 	new table_top(),
 				tabletopedge : 	new table_top_edge(),
-				tableunderside : 	new table_underside()
+				tableunderside : 	new table_underside(),
+				shadow : new Square()
             };
             this.submit_shapes(context, shapes);
-
+			shadow = this.shapes.shadow;
             // Make some Material objects available to you:
             this.materials =
                 {
@@ -680,16 +685,15 @@ window.Billiards_Game = window.classes.Billiards_Game =
 							texture: context.get_instance("assets/models/cue_stick/cue_stick.png")
 						}
 					),
-                    tabletop: context.get_instance(Phong_Shader).material(
-                        Color.of(0, 0, 0, 1), {
-                            ambient: 1,
-                            texture: context.get_instance("assets/models/billiards_table/texture_files/table_top.mtl")
-                        }
-                    ),
+                    felt: context.get_instance(Phong_Shader).material(Color.of(0,0.86500,0.01821,1), {ambient:0.1, diffusivity: 0.5, specularity: 0.1}),
+                    steel: context.get_instance(Phong_Shader).material(Color.of(0.8,0.8,0.8,1), {ambient:0.1, diffusivity: 0.2, specularity: 1}),
+                    wood: context.get_instance(Phong_Shader).material(Color.of(0.545,0.322,0.176,1), {ambient:0.1, diffusivity: 0.5, specularity: 0.5}),
+					shadow: context.get_instance(Phong_Shader).material(Color.of(0,0,0,0.75), {ambient:1, texture:context.get_instance("assets/ball_textures/shadow.png", true)}),
                     default: context.get_instance(Phong_Shader).material(Color.of(1,1,1,1), {ambient: 1})
                 };
+			shadowmat = this.materials.shadow;
+            this.lights = [new Light(Vec.of(0, 0, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, 50, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, -50, 50, 1), Color.of(1, 1, 1, 1), 1e6), new Light(Vec.of(0, 50, 0, 1), Color.of(1, 1, 1, 1), 1e8), new Light(Vec.of(0, 50, 0, 1), Color.of(1, 1, 1, 1), 1e8)];
 
-            this.lights = [new Light(Vec.of(0, 0, 20, 1), Color.of(1, 1, 1, 1), 1e8)];
 
             // Determine setup of the balls
             // 8 ball is placed in center of rack (middle of third row)
@@ -816,11 +820,11 @@ window.Billiards_Game = window.classes.Billiards_Game =
                 cue_transform = Mat4.translation(this.balls[0].pos)
                     .times(Mat4.translation(Vec.of(0,0,-1)))
                     .times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1)))
-                    .times(Mat4.translation(Vec.of(1,0,0)))
                     .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
                     .times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
-                    .times(Mat4.translation([0.75, 0, 0]));
+                    .times(Mat4.translation([0.7, 0, 0]));
+
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (this.t - hit_anim_start < 0.1) {
@@ -830,7 +834,8 @@ window.Billiards_Game = window.classes.Billiards_Game =
                     .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
                     .times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD]))
                     .times(Mat4.scale([20, 20, 20]))
-                    .times(Mat4.translation([0.75, 0, 0]));
+                    .times(Mat4.translation([0.7, 0, 0]));
+
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (!cue_hit) {
@@ -869,35 +874,19 @@ window.Billiards_Game = window.classes.Billiards_Game =
             graphics_state.lights = this.lights;
             this.t += graphics_state.animation_delta_time / 1000;
 
-            /**
-            // debug - draw pocket spheres
+            
+            /* debug - draw pocket spheres
             for (let i = 0; i < POCKET_POSITIONS.length; i++) {
                 this.shapes.ball.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i].minus(Vec.of(0,0,1))).times(Mat4.scale(Vec.of(POCKET_RAD, POCKET_RAD, 0.1))), this.materials.default.override({color: Color.of(1,1,1,0.25)}));
                 this.shapes.cube.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i]).times(Mat4.scale(Vec.of(0.2, 0.2, 50))), this.materials.default);
-            }
-             **/
-
-            // draw tabletop
-            let tableTopTransform = Mat4.translation(Vec.of(0, 0, -0.2))
-                .times(Mat4.scale([0.95 * TABLE_WIDTH, 0.917 * TABLE_WIDTH, 0.01]))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
-            this.shapes.tabletopedge.draw(graphics_state, tableTopTransform, this.materials.default.override({color: Color.of(0, 1, 0, 1), ambient: 0.3, diffusivity: 0.3, specularity: 0, smoothness: 5}));
-
-            // draw table top sides
-            let tableEdgeTransform = Mat4.translation(Vec.of(0, 0, 0.003 * TABLE_WIDTH))
-                .times(Mat4.scale([0.95 * TABLE_WIDTH, 0.917 * TABLE_WIDTH, 1 * TABLE_WIDTH]))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
-            this.shapes.tabletopedge.draw(graphics_state, tableEdgeTransform, this.materials.default.override({smoothness: 4, diffusivity: 0.5, specularity: 0.1, ambient: 0.7, color: Color.of(95/256, 42/256, 21/256, 1)}));
-
-            // draw table sides
-            let tableSidesTransform = Mat4.translation(Vec.of(-0.33 * TABLE_WIDTH, -0.25 * TABLE_WIDTH, -0.1685 * TABLE_WIDTH))
-                .times(Mat4.scale([0.54 * TABLE_WIDTH, 0.56 * TABLE_WIDTH, 0.52 * TABLE_WIDTH]))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
-                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
-            this.shapes.tablesides.draw(graphics_state, tableSidesTransform, this.materials.default.override({ambient: 0.5, specularity: 0, diffusivity: 1, color: Color.of(0.2, 0.2, 0.2, 1)}));
-
+            }*/
+             
+            
+            //draw table
+            this.shapes.tablelegs.draw(graphics_state, Mat4.translation([0, 0, 0]).times(Mat4.scale([112, 106, 110])).times(Mat4.rotation(Math.PI / 2, Vec.of(0, 0, 1))).times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0))).times(Mat4.translation([0, -0.9, 0])), this.materials.steel);
+            this.shapes.tablesides.draw(graphics_state, Mat4.translation([0, 0, 0]).times(Mat4.scale([112, 106, 110])).times(Mat4.rotation(Math.PI / 2, Vec.of(0, 0, 1))).times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0))).times(Mat4.translation([-0.35, -0.25, -0.45])).times(Mat4.scale([0.75, 0.75, 0.75])), this.materials.wood);
+            this.shapes.tabletop.draw(graphics_state,  Mat4.translation([0, 0, -0.15]).times(Mat4.scale([120, 110, 112])).times(Mat4.rotation(Math.PI / 2, Vec.of(0, 0, 1))).times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0))), this.materials.steel);
+            this.shapes.tabletopedge.draw(graphics_state,  Mat4.translation([0, 0, 0]).times(Mat4.scale([112, 106, 110])).times(Mat4.rotation(Math.PI / 2, Vec.of(0, 0, 1))).times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0))).times(Mat4.scale([1.25, 1.25, 1.25])), this.materials.felt);
 
 
 
