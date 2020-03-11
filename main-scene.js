@@ -1,18 +1,18 @@
 // billiards constants
 const BALL_RAD = 3;
-const TABLE_WIDTH = BALL_RAD * 6 * 3;
-const TABLE_HEIGHT = BALL_RAD * 6 * 7;
+const TABLE_WIDTH = BALL_RAD * 6 * 8;
+const TABLE_HEIGHT = BALL_RAD * 6 * 14.5;
 
 // pocket constants
 const POCKET_POSITIONS = [
-    Vec.of(TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 0),
-    Vec.of(-TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 0),
-    Vec.of(TABLE_WIDTH / 2, -TABLE_HEIGHT / 2, 0),
-    Vec.of(-TABLE_WIDTH / 2, -TABLE_HEIGHT / 2, 0),
+    Vec.of(0.955 * TABLE_WIDTH / 2, 0.98 * TABLE_HEIGHT / 2, 0),
+    Vec.of(-0.955 * TABLE_WIDTH / 2, 0.98 * TABLE_HEIGHT / 2, 0),
+    Vec.of(0.955 * TABLE_WIDTH / 2, -0.98 * TABLE_HEIGHT / 2, 0),
+    Vec.of(-0.955 * TABLE_WIDTH / 2, -0.98 * TABLE_HEIGHT / 2, 0),
     Vec.of(TABLE_WIDTH / 2, 0, 0),
     Vec.of(-TABLE_WIDTH / 2, 0, 0)
-]
-const POCKET_RAD = 3 * BALL_RAD; // balls count as sunk if they get within this distance of a pocket position
+];
+const POCKET_RAD = 1.85 * BALL_RAD; // balls count as sunk if they get within this distance of a pocket position
 
 // const FRICTION_ACC = 0.01; // units per tick^2 - looks unnatural
 const FRICTION_SPEED_FRACTION = 0.99; // each tick, the speed of each ball is multiplied by this coefficient
@@ -25,7 +25,7 @@ const COLLISION_FRACTION = 0.99; // the amount of relative velocity components t
 const REWIND_MARGIN = -1e-6 // allows previous collision times to be detected and time rewound up to this amount
 // due to floating point error for collisions that happen almost simultaneously
 
-const MAX_HITTING_SPEED = 5; // max speed achievable when hitting the cue ball
+const MAX_HITTING_SPEED = 10; // max speed achievable when hitting the cue ball
 
 const MAX_GRAV_ACC = 0.1; // acceleration (units/s^2) of balls downwards when they are fully in a pocket circle
 
@@ -39,7 +39,7 @@ var tracked_object_transform_matrix = Mat4.identity(); //Transform matrix of the
 var dynamic_camera_radius = 15 * BALL_RAD; //How far from the object the dynamic camera floats
 var dynamic_camera_tilt = Math.PI / 10; //0 rad looks at horizon, PI/4 rad looks straight down
 var dynamic_camera_xy_angle = Math.PI / 2; //0 rad looks down +x axis, PI/2 looks down +y axis, PI looks down -x axis, 3PI/2 looks down -y axis
-var static_camera_matrix = Mat4.look_at(Vec.of(0, -100, 150), Vec.of(0,0,0), Vec.of(0,0,1)); //Mat4.inverse(Mat4.translation([0, 30, 0]).times(Mat4.rotation(Math.PI/2, Vec.of(-1, 0, 0)))); //Location of the static top down camera
+var static_camera_matrix = Mat4.look_at(Vec.of(0, 0, 400), Vec.of(0,0,0), Vec.of(0,1,0)); //Mat4.inverse(Mat4.translation([0, 30, 0]).times(Mat4.rotation(Math.PI/2, Vec.of(-1, 0, 0)))); //Location of the static top down camera
 var selected_camera = 0; // 0=static, 1=dynamic_camera_angle
 var camera_sensitivity = 0.01 //dynamic camera will rotate at a rate of dx * camera_sensitivity radians where dx=pixels traversed by cursor
 
@@ -657,22 +657,22 @@ window.Billiards_Game = window.classes.Billiards_Game =
                 {
                 	balls: [
                 	    // Cue ball at position 0 and X ball at position X
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/cueball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/1ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/2ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/3ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/4ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/5ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/6ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/7ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/8ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/9ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/10ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/11ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/12ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/13ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/14ball.jpg", true)}),
-						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:1, texture:context.get_instance("assets/ball_textures/15ball.jpg", true)})
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/cueball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/1ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/2ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/3ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/4ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/5ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/6ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/7ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/8ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/9ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/10ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/11ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/12ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/13ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/14ball.jpg", true)}),
+						context.get_instance(Phong_Shader).material(Color.of(0,0,0,1), {ambient:0.8, specularity: 0.2, diffusivity: 0.5, texture:context.get_instance("assets/ball_textures/15ball.jpg", true)})
                 	],
 					cue: context.get_instance(Phong_Shader).material(
 						Color.of(0, 0, 0, 1), {
@@ -680,10 +680,16 @@ window.Billiards_Game = window.classes.Billiards_Game =
 							texture: context.get_instance("assets/models/cue_stick/cue_stick.png")
 						}
 					),
+                    tabletop: context.get_instance(Phong_Shader).material(
+                        Color.of(0, 0, 0, 1), {
+                            ambient: 1,
+                            texture: context.get_instance("assets/models/billiards_table/texture_files/table_top.mtl")
+                        }
+                    ),
                     default: context.get_instance(Phong_Shader).material(Color.of(1,1,1,1), {ambient: 1})
                 };
 
-            this.lights = [new Light(Vec.of(0, 0, 20, 1), Color.of(0, 1, 1, 1), 1000)];
+            this.lights = [new Light(Vec.of(0, 0, 20, 1), Color.of(1, 1, 1, 1), 1e8)];
 
             // Determine setup of the balls
             // 8 ball is placed in center of rack (middle of third row)
@@ -724,23 +730,24 @@ window.Billiards_Game = window.classes.Billiards_Game =
             } while(!temp.done);
 
             // list of balls
+            let yDisplacement = TABLE_HEIGHT / 4;
             this.balls = [
                             new Ball(0, this.shapes.ball, this.materials.balls[0], 0, -30),
-                            new Ball(randNums[0], this.shapes.ball, this.materials.balls[randNums[0]], 0, 0),
-                            new Ball(randNums[1], this.shapes.ball, this.materials.balls[randNums[1]], 1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(randNums[2], this.shapes.ball, this.materials.balls[randNums[2]], -1.2 * BALL_RAD, 1.8 * BALL_RAD),
-                            new Ball(8, this.shapes.ball, this.materials.balls[8], 0, 2 * 1.8 * BALL_RAD),
-                            new Ball(randNums[3], this.shapes.ball, this.materials.balls[randNums[3]],  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(randNums[4], this.shapes.ball, this.materials.balls[randNums[4]], 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD),
-                            new Ball(randNums[5], this.shapes.ball, this.materials.balls[randNums[5]], -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(randNums[6], this.shapes.ball, this.materials.balls[randNums[6]], 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(randNums[7], this.shapes.ball, this.materials.balls[randNums[7]], -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(randNums[8], this.shapes.ball, this.materials.balls[randNums[8]], 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD),
-                            new Ball(randNums[9], this.shapes.ball, this.materials.balls[randNums[9]], 0, 4 * 1.8 * BALL_RAD),
-                            new Ball(randNums[10], this.shapes.ball, this.materials.balls[randNums[10]], -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(randNums[11], this.shapes.ball, this.materials.balls[randNums[11]], 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(leftCorner, this.shapes.ball, this.materials.balls[leftCorner], -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD),
-                            new Ball(rightCorner, this.shapes.ball, this.materials.balls[rightCorner], 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD)
+                            new Ball(randNums[0], this.shapes.ball, this.materials.balls[randNums[0]], 0, yDisplacement),
+                            new Ball(randNums[1], this.shapes.ball, this.materials.balls[randNums[1]], 1.2 * BALL_RAD, 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[2], this.shapes.ball, this.materials.balls[randNums[2]], -1.2 * BALL_RAD, 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(8, this.shapes.ball, this.materials.balls[8], 0, 2 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[3], this.shapes.ball, this.materials.balls[randNums[3]],  -2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[4], this.shapes.ball, this.materials.balls[randNums[4]], 2 * 1.2 * BALL_RAD, 2 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[5], this.shapes.ball, this.materials.balls[randNums[5]], -1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[6], this.shapes.ball, this.materials.balls[randNums[6]], 1 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[7], this.shapes.ball, this.materials.balls[randNums[7]], -3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[8], this.shapes.ball, this.materials.balls[randNums[8]], 3 * 1.2 * BALL_RAD, 3 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[9], this.shapes.ball, this.materials.balls[randNums[9]], 0, 4 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[10], this.shapes.ball, this.materials.balls[randNums[10]], -2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(randNums[11], this.shapes.ball, this.materials.balls[randNums[11]], 2 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(leftCorner, this.shapes.ball, this.materials.balls[leftCorner], -4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD + yDisplacement),
+                            new Ball(rightCorner, this.shapes.ball, this.materials.balls[rightCorner], 4 * 1.2 * BALL_RAD, 4 * 1.8 * BALL_RAD + yDisplacement)
                         ];
 
             // handler for ball position updates
@@ -806,11 +813,23 @@ window.Billiards_Game = window.classes.Billiards_Game =
 		draw_cue(graphics_state) {
 		    let cue_transform = Mat4.identity();
 		    if (!hitting) {
-                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1))).times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD])).times(Mat4.scale([20, 20, 20])).times(Mat4.translation([0.7, 0, 0]));
+                cue_transform = Mat4.translation(this.balls[0].pos)
+                    .times(Mat4.translation(Vec.of(0,0,-1)))
+                    .times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1)))
+                    .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
+                    .times(Mat4.translation([10 * this.get_current_force_value() + BALL_RAD, 0, BALL_RAD]))
+                    .times(Mat4.scale([20, 20, 20]))
+                    .times(Mat4.translation([0.7, 0, 0]));
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (this.t - hit_anim_start < 0.1) {
-                cue_transform = Mat4.translation(this.balls[0].pos).times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1))).times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD])).times(Mat4.scale([20, 20, 20])).times(Mat4.translation([0.7, 0, 0]));
+                cue_transform = Mat4.translation(this.balls[0].pos)
+                    .times(Mat4.translation(Vec.of(0,0,-1)))
+                    .times(Mat4.rotation(dynamic_camera_xy_angle + Math.PI, Vec.of(0,0,1)))
+                    .times(Mat4.rotation(Math.PI / 20, Vec.of(0,-1,0)))
+                    .times(Mat4.translation([(0.1 - this.t + hit_anim_start) / 0.1 * 2 * 10 * hit_force + BALL_RAD, 0, BALL_RAD]))
+                    .times(Mat4.scale([20, 20, 20]))
+                    .times(Mat4.translation([0.7, 0, 0]));
                 this.shapes.cue.draw(graphics_state, cue_transform, this.materials.cue);
 		    }
 		    else if (!cue_hit) {
@@ -849,12 +868,36 @@ window.Billiards_Game = window.classes.Billiards_Game =
             graphics_state.lights = this.lights;
             this.t += graphics_state.animation_delta_time / 1000;
 
+            /**
             // debug - draw pocket spheres
             for (let i = 0; i < POCKET_POSITIONS.length; i++) {
-                this.shapes.ball.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i]).times(Mat4.scale(Vec.of(POCKET_RAD, POCKET_RAD, 0.1))), this.materials.default.override({color: Color.of(1,1,1,0.25)}));
+                this.shapes.ball.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i].minus(Vec.of(0,0,1))).times(Mat4.scale(Vec.of(POCKET_RAD, POCKET_RAD, 0.1))), this.materials.default.override({color: Color.of(1,1,1,0.25)}));
+                this.shapes.cube.draw(graphics_state, Mat4.translation(POCKET_POSITIONS[i]).times(Mat4.scale(Vec.of(0.2, 0.2, 50))), this.materials.default);
             }
-            // debug - draw table square
-            this.shapes.cube.draw(graphics_state, Mat4.scale([TABLE_WIDTH / 2, TABLE_HEIGHT / 2, 1]).times(Mat4.translation(Vec.of(0,0,-1))), this.materials.default.override({color: Color.of(0.2, 0.8, 0.2, 1)}));
+             **/
+
+            // draw tabletop
+            let tableTopTransform = Mat4.translation(Vec.of(0, 0, -0.2))
+                .times(Mat4.scale([0.95 * TABLE_WIDTH, 0.917 * TABLE_WIDTH, 0.01]))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
+            this.shapes.tabletopedge.draw(graphics_state, tableTopTransform, this.materials.default.override({color: Color.of(0, 1, 0, 1), ambient: 0.3, diffusivity: 0.3, specularity: 0, smoothness: 5}));
+
+            // draw table top sides
+            let tableEdgeTransform = Mat4.translation(Vec.of(0, 0, 0.003 * TABLE_WIDTH))
+                .times(Mat4.scale([0.95 * TABLE_WIDTH, 0.917 * TABLE_WIDTH, 1 * TABLE_WIDTH]))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
+            this.shapes.tabletopedge.draw(graphics_state, tableEdgeTransform, this.materials.default.override({smoothness: 4, diffusivity: 0.5, specularity: 0.1, ambient: 0.7, color: Color.of(95/256, 42/256, 21/256, 1)}));
+
+            // draw table sides
+            let tableSidesTransform = Mat4.translation(Vec.of(-0.33 * TABLE_WIDTH, -0.25 * TABLE_WIDTH, -0.1685 * TABLE_WIDTH))
+                .times(Mat4.scale([0.54 * TABLE_WIDTH, 0.56 * TABLE_WIDTH, 0.52 * TABLE_WIDTH]))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(0,0,1)))
+                .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)));
+            this.shapes.tablesides.draw(graphics_state, tableSidesTransform, this.materials.default.override({ambient: 0.5, specularity: 0, diffusivity: 1, color: Color.of(0.2, 0.2, 0.2, 1)}));
+
+
 
 
             this.ballCollider.updateBalls(); // invisible balls dont collide, sinking balls dont collide in this function
